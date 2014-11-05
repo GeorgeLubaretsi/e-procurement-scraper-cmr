@@ -36,7 +36,7 @@ class CMRSpider(Spider):
     https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=708013&_=1415181166565
     '''
     
-    start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=708013&_=%d']
+    # start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=708013&_=%d']
     
 
 
@@ -60,7 +60,7 @@ class CMRSpider(Spider):
         if "Sign in" in response.body:
             raise Exception( "Couldn't log in to the site")
         
-        return self.make_requests_from_url( self.start_urls[0] % int( time() * 1000))
+        return self.make_requests_from_url( self.start_urls[0])
 
     # mandatory, we'll only log in to the site at this point
     def parse(self, response):
