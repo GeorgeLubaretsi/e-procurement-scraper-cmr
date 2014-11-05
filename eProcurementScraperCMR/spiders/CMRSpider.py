@@ -5,7 +5,6 @@ from CMRCredentials import CMRCredentials
 from scrapy.spider import Spider
 from time import time
 from scrapy import Request
-from BeautifulSoup import BeautifulSoup
 import re
 
 
