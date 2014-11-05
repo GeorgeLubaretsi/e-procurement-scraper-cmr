@@ -48,6 +48,7 @@ class CMRSpider(Spider):
         self.base_url_list = 'https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=ssp_list&search=start&ssp_page=1&_=%d'
         
         self.page_numbers_regex = re.compile( r'page: (\d+)/(\d+)')
+        self.tender_id_regex = re.compile( r'ShowSSP\((\d+)\)')
 
     # before any crawling we need to log in to the site
     def start_requests(self):
@@ -89,10 +90,16 @@ class CMRSpider(Spider):
         
         # check if we're on a listing page
         if len( pageNumbers) > 0: 
+            
             # counting pages so we stop when last page has been processed    
             if int( pageNumbers[0][0]) <  int( pageNumbers[0][1]): # this is the case on listings
                 nextPageUrl = self.base_url_list.replace( 'search=start&ssp_page=1', 'ssp_page=next') % int( time() * 1000)
                 yield Request( nextPageUrl, callback = self.parse)
-        
+            
+            ''' 
+            since we're on a listing page we need to find all the tender id's and yield related requests so tenders can be collected
+            '''
+            tenderIDList = self.tender_id_regex.findall( response.body)
+            # we trigger map instead of looping here
         
     
