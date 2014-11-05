@@ -1,0 +1,71 @@
+# -*- coding: utf-8 -*-
+
+from scrapy.http.request.form import FormRequest
+from CMRCredentials import CMRCredentials
+from scrapy.spider import Spider
+from time import time
+
+
+class CMRSpider(Spider):
+    name = 'CMRSpider'
+    
+    allowed_domains = ['tenders.procurement.gov.ge']
+    
+    # logging in
+    login_url = 'https://tenders.procurement.gov.ge/login.php?lang=en'
+
+    # one of the links below points to the site with CMR listing
+    
+    # this gives the menu on the left-hand side of the page
+    #start_urls = ['https://tenders.procurement.gov.ge/engine/controller.php?action=ssp&org_id=0&_=1415169723815']
+    # last 5 changes in tender status
+    #start_urls = ['https://tenders.procurement.gov.ge/engine/controller.php?action=lastevents&_=1415176297611']
+    
+    # CORRECT listing of simplified direct tenders
+    start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=ssp_list&search=start&ssp_page=1&_=1415176557559']
+
+    '''
+    within the page details are shown calling ShowSSP(id) function, the number is used in the calls below for detailed view ssp_id=id
+    the _= parameter is not sure for now, looks like a proxy timestamp: int( time.time() * 1000), this for jquery/php combo serves as a request 
+    to provide non-cached data, I can probably generate it
+    ''' 
+
+    '''
+    an actual link to a detailed tender information, need to figure out where to take the sources from
+    https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=707942&_=1415177825531
+    https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=708013&_=1415181166565
+    '''
+    
+    start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=708013&_=%d']
+    
+
+
+    # before any crawling we need to log in to the site
+    def start_requests(self):
+        # CMR data is only available to logged in users
+        siteCreds = CMRCredentials().load_credentials()
+        loginResponse = FormRequest( self.login_url,
+                                     formdata = {'user' : siteCreds['username'], 
+                                                 'pass' : siteCreds['password']},
+                                     callback = self.verify_login)
+
+        # scrapy needs a list of responses here to iterate
+        return [loginResponse]
+        
+    # checking whether we have succeeded logging in        
+    def verify_login(self, response):
+        # need to think about a more reliable check
+        if not 'Exit' in response.body:
+            raise Exception( "Couldn't log in to the site")
+        if "Sign in" in response.body:
+            raise Exception( "Couldn't log in to the site")
+        
+        return self.make_requests_from_url( self.start_urls[0] % int( time() * 1000))
+
+    # mandatory, we'll only log in to the site at this point
+    def parse(self, response):
+        print response.body
+        
+        
+            
+    
