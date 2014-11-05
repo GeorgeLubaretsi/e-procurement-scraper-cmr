@@ -4,6 +4,9 @@ from scrapy.http.request.form import FormRequest
 from CMRCredentials import CMRCredentials
 from scrapy.spider import Spider
 from time import time
+from scrapy import Request
+from BeautifulSoup import BeautifulSoup
+import re
 
 
 class CMRSpider(Spider):
@@ -22,7 +25,10 @@ class CMRSpider(Spider):
     #start_urls = ['https://tenders.procurement.gov.ge/engine/controller.php?action=lastevents&_=1415176297611']
     
     # CORRECT listing of simplified direct tenders
-    start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=ssp_list&search=start&ssp_page=1&_=1415176557559']
+    #start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=ssp_list&search=start&ssp_page=1&_=1415176557559']
+    
+    start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=ssp_list&search=start&ssp_page=1&_=%d' % int( time() * 1000)]
+    
 
     '''
     within the page details are shown calling ShowSSP(id) function, the number is used in the calls below for detailed view ssp_id=id
@@ -38,7 +44,11 @@ class CMRSpider(Spider):
     
     # start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=708013&_=%d']
     
-
+    def __init__(self):
+        super( CMRSpider, self).__init__()
+        self.base_url_list = 'https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=ssp_list&search=start&ssp_page=1&_=%d'
+        
+        self.page_numbers_regex = re.compile( r'page: (\d+)/(\d+)')
 
     # before any crawling we need to log in to the site
     def start_requests(self):
@@ -62,10 +72,28 @@ class CMRSpider(Spider):
         
         return self.make_requests_from_url( self.start_urls[0])
 
-    # mandatory, we'll only log in to the site at this point
+    # mandatory, we're already logged in and can start extracting data
     def parse(self, response):
-        print response.body
+        
+        '''
+        so I need to read the list and yield a request for each ssp_id I find in the list
+        finally, I need to yield a request for the next page
+        '''
+        
+        '''
+        the request for the next page of listing
+        
+        what's missing now is figuring out that we are processing a listing, not a single tender, or we'll be over our heads with repeated listings
+        we check if we have button ssp_btn_next and check if it's enabled (aria-disabled attribute), if not it's the last page 
+        '''
+        pageNumbers = self.page_numbers_regex.findall( response.body)
+        
+        # check if we're on a listing page
+        if len( pageNumbers) > 0: 
+            # counting pages so we stop when last page has been processed    
+            if int( pageNumbers[0][0]) <  int( pageNumbers[0][1]): # this is the case on listings
+                nextPageUrl = self.base_url_list.replace( 'search=start&ssp_page=1', 'ssp_page=next') % int( time() * 1000)
+                yield Request( nextPageUrl, callback = self.parse)
         
         
-            
     
