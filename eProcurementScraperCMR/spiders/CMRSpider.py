@@ -3,12 +3,11 @@
 from scrapy.http.request.form import FormRequest
 from CMRCredentials import CMRCredentials
 from scrapy.spider import Spider
-from time import time
 from scrapy import Request
-import re
+import re, time
 
 
-class CMRSpider(Spider):
+class CMRSpider( Spider):
     name = 'CMRSpider'
     
     allowed_domains = ['tenders.procurement.gov.ge']
@@ -26,20 +25,20 @@ class CMRSpider(Spider):
     # CORRECT listing of simplified direct tenders
     #start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=ssp_list&search=start&ssp_page=1&_=1415176557559']
     
-    start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=ssp_list&search=start&ssp_page=1&_=%d' % int( time() * 1000)]
+    start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=ssp_list&search=start&ssp_page=1&_=%d' % int( time.time() * 1000)]
     
 
     '''
     within the page details are shown calling ShowSSP(id) function, the number is used in the calls below for detailed view ssp_id=id
     the _= parameter is not sure for now, looks like a proxy timestamp: int( time.time() * 1000), this for jquery/php combo serves as a request 
     to provide non-cached data, I can probably generate it
-    ''' 
 
-    '''
     an actual link to a detailed tender information, need to figure out where to take the sources from
     https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=707942&_=1415177825531
     https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=708013&_=1415181166565
     '''
+    # note %s and %d near the end of the string, these are later replaced with actual values
+    tender_url = 'https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=%s&_=%d'
     
     # start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=708013&_=%d']
     
@@ -73,7 +72,7 @@ class CMRSpider(Spider):
         return self.make_requests_from_url( self.start_urls[0])
 
     # mandatory, we're already logged in and can start extracting data
-    def parse(self, response):
+    def parse( self, response):
         
         '''
         so I need to read the list and yield a request for each ssp_id I find in the list
@@ -88,18 +87,48 @@ class CMRSpider(Spider):
         '''
         pageNumbers = self.page_numbers_regex.findall( response.body)
         
-        # check if we're on a listing page
-        if len( pageNumbers) > 0: 
+        '''
+        check if we are on a listing, if yes, we generate (or not) a request for the next page
+        and generate requests for the listed tenders
+        
+        tender details are handled directly by their callback function, this one is then skipped
+        '''
+        
+        if len( pageNumbers) == 0: 
+            return
+        
+        # counting pages so we stop creating new calls when we're on the last page
+        if int( pageNumbers[0][0]) <  int( pageNumbers[0][1]): 
+            nextPageUrl = self.base_url_list.replace( 'search=start&ssp_page=1', 'ssp_page=next') % int( time.time() * 1000)
+            #print nextPageUrl
+            yield Request( nextPageUrl, callback = self.parse)
+        
+        ''' 
+        since we're on a listing page we need to find all the tender id's and yield related requests so tenders can be collected
+        '''
+        tenderIDList = self.tender_id_regex.findall( response.body)
+        print tenderIDList
+        
+        for tenderID in tenderIDList:
+            tenderUrl = self.tender_url % ( tenderID, int( time.time() * 1000))
+            # print tenderUrl
             
-            # counting pages so we stop when last page has been processed    
-            if int( pageNumbers[0][0]) <  int( pageNumbers[0][1]): # this is the case on listings
-                nextPageUrl = self.base_url_list.replace( 'search=start&ssp_page=1', 'ssp_page=next') % int( time() * 1000)
-                yield Request( nextPageUrl, callback = self.parse)
-            
-            ''' 
-            since we're on a listing page we need to find all the tender id's and yield related requests so tenders can be collected
-            '''
-            tenderIDList = self.tender_id_regex.findall( response.body)
-            # we trigger map instead of looping here
+            yield Request( tenderUrl, callback = self._process_tender)
+            # I have to do that in order not to send the same timestamp with many requests
+            time.sleep( 0.002)
+           
+        
+    def _process_tender( self, response):
+        ''' This will probably be a ParseItem type of a method '''
+        print "Processing tender"
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
     
