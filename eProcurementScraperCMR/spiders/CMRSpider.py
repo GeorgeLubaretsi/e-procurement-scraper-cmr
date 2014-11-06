@@ -16,8 +16,6 @@ class CMRSpider( Spider):
     # logging in
     login_url = 'https://tenders.procurement.gov.ge/login.php?lang=en'
 
-    # one of the links below points to the site with CMR listing
-    
     # this gives the menu on the left-hand side of the page
     #start_urls = ['https://tenders.procurement.gov.ge/engine/controller.php?action=ssp&org_id=0&_=1415169723815']
     # last 5 changes in tender status
@@ -28,21 +26,18 @@ class CMRSpider( Spider):
     
     start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=ssp_list&search=start&ssp_page=1&_=%d' % int( time.time() * 1000)]
     
-
     '''
     within the page details are shown calling ShowSSP(id) function, the number is used in the calls below for detailed view ssp_id=id
-    the _= parameter is not sure for now, looks like a proxy timestamp: int( time.time() * 1000), this for jquery/php combo serves as a request 
+    the _= parameter is a proxy timestamp: int( time.time() * 1000), for jquery/php combo, serves as a request 
     to provide non-cached data, I can probably generate it
 
-    an actual link to a detailed tender information, need to figure out where to take the sources from
+    an actual link to a detailed tender information
     https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=707942&_=1415177825531
     https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=708013&_=1415181166565
     '''
     # note %s and %d near the end of the string, these are later replaced with actual values
     tender_url = 'https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=%s&_=%d'
-    
-    # start_urls = ['https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=708013&_=%d']
-    
+        
     def __init__(self):
         super( CMRSpider, self).__init__()
         self.base_url_list = 'https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=ssp_list&search=start&ssp_page=1&_=%d'
@@ -76,23 +71,17 @@ class CMRSpider( Spider):
     def parse( self, response):
         
         '''
-        so I need to read the list and yield a request for each ssp_id I find in the list
+        I need to read the list and yield a request for each ssp_id I find in the list
         finally, I need to yield a request for the next page
         '''
         
-        '''
-        the request for the next page of listing
-        
-        what's missing now is figuring out that we are processing a listing, not a single tender, or we'll be over our heads with repeated listings
-        we check if we have button ssp_btn_next and check if it's enabled (aria-disabled attribute), if not it's the last page 
-        '''
         pageNumbers = self.page_numbers_regex.findall( response.body)
         
         '''
         check if we are on a listing, if yes, we generate (or not) a request for the next page
         and generate requests for the listed tenders
         
-        tender details are handled directly by their callback function, this one is then skipped
+        tender details are handled directly by their callback
         '''
         
         if len( pageNumbers) == 0: 
@@ -122,6 +111,8 @@ class CMRSpider( Spider):
            
         
     def _process_tender( self, response):
+        
+        # later on these regex's should be compiled before the download
         
         try:
             # Tender parser, yields a Procurement item
@@ -184,7 +175,9 @@ class CMRSpider( Spider):
             # TEMP
             print 'Error scraping url:\t'
             print response.url
-            
+        
+        # this triggers the Item pipeline through which we can store data
+        yield iProcurement
   
         
         
