@@ -8,7 +8,23 @@
 import scrapy
 
 
-class EprocurementscrapercmrItem(scrapy.Item):
+class Procurement(scrapy.Item):
     # define the fields for your item here like:
     # name = scrapy.Field()
-    pass
+    pStatus = scrapy.Field()
+    pProcuringEntities = scrapy.Field()
+    pSupplier = scrapy.Field()
+    pValueContract = scrapy.Field()
+    pValueDate = scrapy.Field()
+    pAmountPaid = scrapy.Field()
+    pAmountPaidDate = scrapy.Field()
+    pFinancingSource = scrapy.Field()
+    pProcurementBase = scrapy.Field()
+    pDocument = scrapy.Field()
+    pAttachments = scrapy.Field()
+    pContractType = scrapy.Field()
+    pAgreementAmount = scrapy.Field()
+    pAgreementDone = scrapy.Field()
+    pCPVCodesMain = scrapy.Field()
+    pCPVCodesDetailed = scrapy.Field()
+    
