@@ -111,7 +111,7 @@ class CMRSpider( Spider):
         tenderIDList = self.tender_id_regex.findall( response.body)
         
         # TEMP, limit to one tender for development
-        #for tenderID in tenderIDList[0:1]:
+        # for tenderID in tenderIDList[0:1]:
         for tenderID in tenderIDList:
             tenderUrl = self.tender_url % ( tenderID, int( time.time() * 1000))
             # print tenderUrl
@@ -122,62 +122,69 @@ class CMRSpider( Spider):
            
         
     def _process_tender( self, response):
-        ''' Tender parser, yields a Procurement item '''
-        iProcurement = Procurement()
         
-        siteBody = response.body.replace('\n', '').replace( '\r', '').replace('`', '')
-        
-        # Procurement status
-        iProcurement['pStatus'] =  re.findall( r'Status:.*?\>(.*?)\<', siteBody)[0]
-        
-        # Procuring Entities
-        iProcurement['pProcuringEntities'] = re.findall( r'Procuring\s+entities.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody)[0]
-        
-        # Supplier
-        iProcurement['pSupplier'] = re.findall( r'Supplier.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody)[0]
-        
-        # Amounts
-        dAmounts = re.findall( r'Amounts.*?contract\s+value.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*GEL).*?actually\s+paid\s+amount.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*GEL)', siteBody)[0]
-        iProcurement['pValueDate'] = dAmounts[0]
-        iProcurement['pValueContract'] = dAmounts[1]
-        iProcurement['pAmountPaidDate'] = dAmounts[2]
-        iProcurement['pAmountPaid'] = dAmounts[3]
-
-        # Financing source
-        iProcurement['pFinancingSource'] = re.findall( r'Financing\s+source.*?\<td\>(.*?)\s*\<br\>.*?\<strong\>(.*?)\<', siteBody)[0]
-        
-        # Procurement Base
-        iProcurement['pProcurementBase'] = re.findall( r'Procurement\s+Base.*?\<td\>[&quot;]?(.*?)[&quot;]?\s*\<', siteBody)[0]
-        
-        # Document
-        iProcurement['pDocument'] = re.findall( r'Document.*?\<td.*?\>(.*?)\s*\<br.*?\>(#\s*.*?)\<br.*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4})\<', siteBody)[0]
-        
-        # Attachments (A single one for now?)
-        #     Problem for now with unicode characters in file names 
-        iProcurement['pAttachments'] = re.findall( r'Attached\s+Files.*?href.*?"(.*?)".*?\<i\>(.*?)\<.*?(\d{2}\.\d{2}\.\d{4}\s+\d{2}\:\d{2})\<', siteBody)[0]
-        
-        # Contract Type
-        iProcurement['pContractType'] = re.findall( r'Contract\s+type.*?\<div.*?\>(.*?)\<', siteBody)[0]
-        
-        # Agreement Amount
-        iProcurement['pAgreementAmount'] = re.findall( r'Agreement\s+Amount.*?\<div.*?\>(\d+\.*\d* GEL)\<', siteBody)[0]
-        
-        # Agreement Done
-        iProcurement['pAgreementDone'] = re.findall( r'Agreement\s+Done.*?\<div.*?\>(.*?)\<', siteBody)[0]
-        
-        # CPV Codes (main)
-        allCodes = re.findall(  r'CPV\s+Codes\s+\(main\)\<\/div\>(.*?\<\/div\>)&nbsp;', siteBody)[0]
-        iProcurement['pCPVCodesMain'] = re.findall( r'(\d+\s+.*?)\<\/div', allCodes)
-        
-        # CPV Codes( detailed)
-        allCodes = re.findall(  r'CPV\s+Codes\s+\(detailed\)\<\/div\>(.*?\<\/div\>)&nbsp;', siteBody)[0]
-        iProcurement['pCPVCodesDetailed'] = re.findall( r'(\d+\s+.*?)\<\/div', allCodes)
-
-        
-        # TEMP
-        print iProcurement
-        print
-        
+        try:
+            # Tender parser, yields a Procurement item
+            iProcurement = Procurement()
+            
+            siteBody = response.body.replace('\n', '').replace( '\r', '').replace('`', '')
+            
+            # Procurement status
+            iProcurement['pStatus'] =  re.findall( r'Status:.*?\>(.*?)\<', siteBody)[0]
+            
+            # Procuring Entities
+            iProcurement['pProcuringEntities'] = re.findall( r'Procuring\s+entities.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody)[0]
+            
+            # Supplier
+            iProcurement['pSupplier'] = re.findall( r'Supplier.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody)[0]
+            
+            # Amounts
+            dAmounts = re.findall( r'Amounts.*?contract\s+value.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<.*?actually\s+paid\s+amount.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', siteBody)[0]
+            iProcurement['pValueDate'] = dAmounts[0]
+            iProcurement['pValueContract'] = dAmounts[1]
+            iProcurement['pAmountPaidDate'] = dAmounts[2]
+            iProcurement['pAmountPaid'] = dAmounts[3]
+    
+            # Financing source
+            iProcurement['pFinancingSource'] = re.findall( r'Financing\s+source.*?\<td\>(.*?)\s*\<br\>.*?\<strong\>(.*?)\<', siteBody)[0]
+            
+            # Procurement Base
+            iProcurement['pProcurementBase'] = re.findall( r'Procurement\s+Base.*?\<td\>[&quot;]?(.*?)[&quot;]?\s*\<', siteBody)[0]
+            
+            # Document
+            iProcurement['pDocument'] = re.findall( r'Document.*?\<td.*?\>(.*?)\s*\<br.*?\>(#\s*.*?)\<br.*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4})\<', siteBody)[0]
+            
+            # Attachments (A single one for now?)
+            #     Problem for now with unicode characters in file names 
+            iProcurement['pAttachments'] = re.findall( r'Attached\s+Files.*?[href.*?"(.*?)"]*?.*?\<i\>(.*?)\<.*?(\d{2}\.\d{2}\.\d{4}\s+\d{2}\:\d{2})\<', siteBody)[0]
+            if len( iProcurement['pAttachments']) < 3:
+                iProcurement['pAttachments'] = 'Not available'
+            
+            # Contract Type
+            iProcurement['pContractType'] = re.findall( r'Contract\s+type.*?\<div.*?\>(.*?)\<', siteBody)[0]
+            
+            # Agreement Amount
+            iProcurement['pAgreementAmount'] = re.findall( r'Agreement\s+Amount.*?\<div.*?\>(\d+\.*\d* \w+)\<', siteBody)[0]
+            
+            # Agreement Done
+            iProcurement['pAgreementDone'] = re.findall( r'Agreement\s+Done.*?\<div.*?\>(.*?)\<', siteBody)[0]
+            
+            # CPV Codes (main)
+            allCodes = re.findall(  r'CPV\s+Codes\s+\(main\)\<\/div\>(.*?\<\/div\>)&nbsp;', siteBody)[0]
+            iProcurement['pCPVCodesMain'] = re.findall( r'(\d+\s+.*?)\<\/div', allCodes)
+            
+            # CPV Codes( detailed)
+            allCodes = re.findall(  r'CPV\s+Codes\s+\(detailed\)\<\/div\>(.*?\<\/div\>)&nbsp;', siteBody)[0]
+            iProcurement['pCPVCodesDetailed'] = re.findall( r'(\d+\s+.*?)\<\/div', allCodes)
+            
+            # print iProcurement
+            
+        # error thrown by ex.findall when extracting beyond the end of the string 
+        except IndexError:        
+            # TEMP
+            print 'Error scraping url:\t'
+            print response.url
+            
   
         
         
