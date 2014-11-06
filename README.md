@@ -1,13 +1,13 @@
 # e-procurement-scraper-cmr
 
-A scraper for simplified, direct tenders. The site requires a valid login to access these data.
+A scraper for simplified, direct procurements. 
 
-## Execution
+### Execution
 
 	cd e-procurement-scraper-cmr
 	scrapy crawl CMRSpider -o out_folder/out_file.json
 
-## Requirements
+### Requirements
 
 The scraper requires a valid login to function.
 The login and password should be in a file
@@ -20,4 +20,7 @@ The file format:
 	username = 
 	password = 
 
+### To do
 
+* extend to store files attached to procurements
+* extend to facilitate incremental scrapes
