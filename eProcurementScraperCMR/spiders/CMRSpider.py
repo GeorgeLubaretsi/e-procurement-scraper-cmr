@@ -4,7 +4,7 @@ from scrapy.http.request.form import FormRequest
 from CMRCredentials import CMRCredentials
 from scrapy.spider import Spider
 from scrapy import Request
-import re, time, os, urllib
+import re, time, os
 from eProcurementScraperCMR.items import Procurement
 
 

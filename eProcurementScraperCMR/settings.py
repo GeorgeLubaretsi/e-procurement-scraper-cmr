@@ -16,7 +16,3 @@ NEWSPIDER_MODULE = 'eProcurementScraperCMR.spiders'
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 USER_AGENT = 'Mozilla/5.0 (Windows; U; MSIE 9.0; WIndows NT 9.0; en-US))'
 
-ITEM_PIPELINES = {
-      'eProcurementScraperCMR.pipelines.CMRProcurementPipeline' : 100,
-#      'eProcurementScraperCMR.pipelines.JSONUnicodeFix' : 200,
-}
