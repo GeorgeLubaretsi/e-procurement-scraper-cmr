@@ -4,7 +4,7 @@ from scrapy.http.request.form import FormRequest
 from CMRCredentials import CMRCredentials
 from scrapy.spider import Spider
 from scrapy import Request
-import re, time
+import re, time, os, urllib
 from eProcurementScraperCMR.items import Procurement
 
 
@@ -38,12 +38,29 @@ class CMRSpider( Spider):
     # note %s and %d near the end of the string, these are later replaced with actual values
     tender_url = 'https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=%s&_=%d'
         
-    def __init__(self):
-        super( CMRSpider, self).__init__()
+    def __init__(self, attachments_folder = None, *args, **kwargs):
+        super( CMRSpider, self).__init__( *args, **kwargs)
         self.base_url_list = 'https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=ssp_list&search=start&ssp_page=1&_=%d'
         
-        self.page_numbers_regex = re.compile( r'page: (\d+)/(\d+)')
-        self.tender_id_regex = re.compile( r'ShowSSP\((\d+)\)')
+        self.page_numbers_regex = re.compile( ur'page: (\d+)/(\d+)')
+        self.tender_id_regex = re.compile( ur'ShowSSP\((\d+)\)')
+        
+        self.attachments_folder = attachments_folder
+     
+       
+        # setting up attachment saving
+        if self.attachments_folder is None:
+            return 
+        
+        # create folder if does not exist
+        try:
+            os.stat( self.attachments_folder)
+        except OSError:
+            os.mkdir( self.attachments_folder)
+        
+
+
+
 
     # before any crawling we need to log in to the site
     def start_requests(self):
@@ -100,7 +117,7 @@ class CMRSpider( Spider):
         tenderIDList = self.tender_id_regex.findall( response.body)
         
         # TEMP, limit to one tender for development
-        # for tenderID in tenderIDList[0:1]:
+        #for tenderID in tenderIDList[0:1]:
         for tenderID in tenderIDList:
             tenderUrl = self.tender_url % ( tenderID, int( time.time() * 1000))
             # print tenderUrl
@@ -109,75 +126,104 @@ class CMRSpider( Spider):
             # I have to do that in order not to send the same timestamp with many requests
             time.sleep( 0.002)
            
+    # saving the attachments
+    def _save_attachment(self, response, out_filename):
+        
+        if self.attachments_folder is None:
+            return 
+        
+        # filename is the last component of the url    
+        out_filename = self.attachments_folder + '/' + out_filename 
+        
+        out_file = open( out_filename, 'wb')
+        out_file.write( response.body)
+        out_file.close()
         
     def _process_tender( self, response):
         
         # later on these regex's should be compiled before the download
         
+        #f = open( 'tender.html', 'wb')
+        #f.write( response.body)
+        #f.close()
+        
         try:
             # Tender parser, yields a Procurement item
             iProcurement = Procurement()
-            
+
             siteBody = response.body.replace('\n', '').replace( '\r', '').replace('`', '')
             
             # Procurement status
-            iProcurement['pStatus'] =  re.findall( r'Status:.*?\>(.*?)\<', siteBody)[0]
+            iProcurement['pStatus'] =  re.findall( ur'Status:.*?\>(.*?)\<', siteBody, re.UNICODE)[0]
             
             # Procuring Entities
-            iProcurement['pProcuringEntities'] = re.findall( r'Procuring\s+entities.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody)[0]
+            iProcurement['pProcuringEntities'] = re.findall( ur'Procuring\s+entities.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody, re.UNICODE)[0]
             
             # Supplier
-            iProcurement['pSupplier'] = re.findall( r'Supplier.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody)[0]
+            iProcurement['pSupplier'] = re.findall( ur'Supplier.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody, re.UNICODE)[0]
             
             # Amounts
-            dAmounts = re.findall( r'Amounts.*?contract\s+value.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<.*?actually\s+paid\s+amount.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', siteBody)[0]
+            dAmounts = re.findall( ur'Amounts.*?contract\s+value.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<.*?actually\s+paid\s+amount.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', siteBody, re.UNICODE)[0]
             iProcurement['pValueDate'] = dAmounts[0]
             iProcurement['pValueContract'] = dAmounts[1]
             iProcurement['pAmountPaidDate'] = dAmounts[2]
             iProcurement['pAmountPaid'] = dAmounts[3]
     
             # Financing source
-            iProcurement['pFinancingSource'] = re.findall( r'Financing\s+source.*?\<td\>(.*?)\s*\<br\>.*?\<strong\>(.*?)\<', siteBody)[0]
+            iProcurement['pFinancingSource'] = re.findall( ur'Financing\s+source.*?\<td\>(.*?)\s*\<br\>.*?\<strong\>(.*?)\<', siteBody, re.UNICODE)[0]
             
             # Procurement Base
-            iProcurement['pProcurementBase'] = re.findall( r'Procurement\s+Base.*?\<td\>[&quot;]?(.*?)[&quot;]?\s*\<', siteBody)[0]
+            iProcurement['pProcurementBase'] = re.findall( ur'Procurement\s+Base.*?\<td\>[&quot;]?(.*?)[&quot;]?\s*\<', siteBody, re.UNICODE)[0]
             
             # Document
-            iProcurement['pDocument'] = re.findall( r'Document.*?\<td.*?\>(.*?)\s*\<br.*?\>(#\s*.*?)\<br.*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4})\<', siteBody)[0]
+            iProcurement['pDocument'] = re.findall( ur'Document.*?\<td.*?\>(.*?)\s*\<br.*?\>(#\s*.*?)\<br.*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4})\<', siteBody, re.UNICODE)[0]
             
-            # Attachments (A single one for now?)
+            # Attachments 
+            '''
+            TODO
+            
+            Modify so multiple attachments can be downloaded
+            '''
+            
             #     Problem for now with unicode characters in file names 
-            iProcurement['pAttachments'] = re.findall( r'Attached\s+Files.*?[href.*?"(.*?)"]*?.*?\<i\>(.*?)\<.*?(\d{2}\.\d{2}\.\d{4}\s+\d{2}\:\d{2})\<', siteBody)[0]
+            try:
+                iProcurement['pAttachments'] = re.findall( ur'Attached\s+Files.*?href.*?"(.*?)".*?\<i\>(.*?)\<.*?(\d{2}\.\d{2}\.\d{4}\s+\d{2}\:\d{2})\<', siteBody, re.UNICODE)[0]
+            except IndexError:
+                #sometimes there is no link to the attachment, need to deal with this case
+                iProcurement['pAttachments'] = re.findall( ur'Attached\s+Files.*?\<i\>(.*?)\<.*?(\d{2}\.\d{2}\.\d{4}\s+\d{2}\:\d{2})\<', siteBody, re.UNICODE)[0]
+                
+            
             if len( iProcurement['pAttachments']) < 3:
                 iProcurement['pAttachments'] = 'Not available'
+            else:
+                yield Request( 'https://' + self.allowed_domains[0] + '/' + iProcurement['pAttachments'][0], 
+                               callback = lambda data, filename = iProcurement['pAttachments'][1]: self._save_attachment( data, filename))
             
             # Contract Type
-            iProcurement['pContractType'] = re.findall( r'Contract\s+type.*?\<div.*?\>(.*?)\<', siteBody)[0]
+            iProcurement['pContractType'] = re.findall( ur'Contract\s+type.*?\<div.*?\>(.*?)\<', siteBody, re.UNICODE)[0]
             
             # Agreement Amount
-            iProcurement['pAgreementAmount'] = re.findall( r'Agreement\s+Amount.*?\<div.*?\>(\d+\.*\d* \w+)\<', siteBody)[0]
+            iProcurement['pAgreementAmount'] = re.findall( ur'Agreement\s+Amount.*?\<div.*?\>(\d+\.*\d* \w+)\<', siteBody, re.UNICODE)[0]
             
             # Agreement Done
-            iProcurement['pAgreementDone'] = re.findall( r'Agreement\s+Done.*?\<div.*?\>(.*?)\<', siteBody)[0]
+            iProcurement['pAgreementDone'] = re.findall( ur'Agreement\s+Done.*?\<div.*?\>(.*?)\<', siteBody, re.UNICODE)[0]
             
             # CPV Codes (main)
-            allCodes = re.findall(  r'CPV\s+Codes\s+\(main\)\<\/div\>(.*?\<\/div\>)&nbsp;', siteBody)[0]
-            iProcurement['pCPVCodesMain'] = re.findall( r'(\d+\s+.*?)\<\/div', allCodes)
+            allCodes = re.findall(  ur'CPV\s+Codes\s+\(main\)\<\/div\>(.*?\<\/div\>)&nbsp;', siteBody, re.UNICODE)[0]
+            iProcurement['pCPVCodesMain'] = re.findall( ur'(\d+\s+.*?)\<\/div', allCodes, re.UNICODE)
             
             # CPV Codes( detailed)
-            allCodes = re.findall(  r'CPV\s+Codes\s+\(detailed\)\<\/div\>(.*?\<\/div\>)&nbsp;', siteBody)[0]
-            iProcurement['pCPVCodesDetailed'] = re.findall( r'(\d+\s+.*?)\<\/div', allCodes)
+            allCodes = re.findall(  ur'CPV\s+Codes\s+\(detailed\)\<\/div\>(.*?\<\/div\>)&nbsp;', siteBody, re.UNICODE)[0]
+            iProcurement['pCPVCodesDetailed'] = re.findall( ur'(\d+\s+.*?)\<\/div', allCodes, re.UNICODE)
             
-            # print iProcurement
+            yield iProcurement
             
         # error thrown by ex.findall when extracting beyond the end of the string 
         except IndexError:        
             # TEMP
-            print 'Error scraping url:\t'
+            print 'Error scraping url:'
             print response.url
         
-        # this triggers the Item pipeline through which we can store data
-        yield iProcurement
   
         
         

@@ -5,7 +5,7 @@ A scraper for simplified, direct procurements.
 ### Execution
 
 	cd e-procurement-scraper-cmr
-	scrapy crawl CMRSpider -o out_folder/out_file.json
+	scrapy crawl CMRSpider -o out_folder/out_file.json -a attachments_folder=folder_name
 
 ### Requirements
 
