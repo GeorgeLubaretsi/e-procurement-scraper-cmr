@@ -179,25 +179,26 @@ class CMRSpider( Spider):
             iProcurement['pDocument'] = re.findall( ur'Document.*?\<td.*?\>(.*?)\s*\<br.*?\>(#\s*.*?)\<br.*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4})\<', siteBody, re.UNICODE)[0]
             
             # Attachments 
-            '''
-            TODO
+            allAttachmentsTable = re.findall( ur'Attached\s+Files.*?(\<table.*?\<\/table)', siteBody, re.UNICODE)[0]
+            allAttachments = re.findall( ur'href="(.*?)".*?\<i\>(.*?)\<\/i\>', allAttachmentsTable, re.UNICODE)            
+            for attachment in allAttachments:
+                yield Request( 'https://' + self.allowed_domains[0] + '/' + attachment[0], 
+                               callback = lambda data, filename = attachment[1]: self._save_attachment( data, filename))
+            iProcurement['pAttachments'] = allAttachments
             
-            Modify so multiple attachments can be downloaded
-            '''
-            
-            #     Problem for now with unicode characters in file names 
-            try:
-                iProcurement['pAttachments'] = re.findall( ur'Attached\s+Files.*?href.*?"(.*?)".*?\<i\>(.*?)\<.*?(\d{2}\.\d{2}\.\d{4}\s+\d{2}\:\d{2})\<', siteBody, re.UNICODE)[0]
-            except IndexError:
-                #sometimes there is no link to the attachment, need to deal with this case
-                iProcurement['pAttachments'] = re.findall( ur'Attached\s+Files.*?\<i\>(.*?)\<.*?(\d{2}\.\d{2}\.\d{4}\s+\d{2}\:\d{2})\<', siteBody, re.UNICODE)[0]
-                
-            
-            if len( iProcurement['pAttachments']) < 3:
-                iProcurement['pAttachments'] = 'Not available'
-            else:
-                yield Request( 'https://' + self.allowed_domains[0] + '/' + iProcurement['pAttachments'][0], 
-                               callback = lambda data, filename = iProcurement['pAttachments'][1]: self._save_attachment( data, filename))
+            #             #     Problem for now with unicode characters in file names 
+            #             try:
+            #                 iProcurement['pAttachments'] = re.findall( ur'Attached\s+Files.*?href.*?"(.*?)".*?\<i\>(.*?)\<.*?(\d{2}\.\d{2}\.\d{4}\s+\d{2}\:\d{2})\<', siteBody, re.UNICODE)[0]
+            #             except IndexError:
+            #                 #sometimes there is no link to the attachment, need to deal with this case
+            #                 iProcurement['pAttachments'] = re.findall( ur'Attached\s+Files.*?\<i\>(.*?)\<.*?(\d{2}\.\d{2}\.\d{4}\s+\d{2}\:\d{2})\<', siteBody, re.UNICODE)[0]
+            #                 
+            #             
+            #             if len( iProcurement['pAttachments']) < 3:
+            #                 iProcurement['pAttachments'] = 'Not available'
+            #             else:
+            #                 yield Request( 'https://' + self.allowed_domains[0] + '/' + iProcurement['pAttachments'][0], 
+            #                                callback = lambda data, filename = iProcurement['pAttachments'][1]: self._save_attachment( data, filename))
             
             # Contract Type
             iProcurement['pContractType'] = re.findall( ur'Contract\s+type.*?\<div.*?\>(.*?)\<', siteBody, re.UNICODE)[0]
