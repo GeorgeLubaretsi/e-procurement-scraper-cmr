@@ -12,7 +12,7 @@ A scraper for simplified, direct procurements.
 The scraper requires a valid login to function.
 The login and password should be in a file
 
-	$HOME/.crmcreds
+	$HOME/.cmrcreds
 
 The file format:
 
