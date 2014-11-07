@@ -123,7 +123,7 @@ class CMRSpider( Spider):
             # print tenderUrl
             
             yield Request( tenderUrl, callback = self._process_tender)
-            # I have to do that in order not to send the same timestamp with many requests
+            # I have to wait in order not to send the same timestamp with many requests
             time.sleep( 0.002)
            
     # saving the attachments
@@ -135,10 +135,16 @@ class CMRSpider( Spider):
         # filename is the last component of the url    
         out_filename = self.attachments_folder + '/' + out_filename 
         
-        out_file = open( out_filename, 'wb')
-        out_file.write( response.body)
-        out_file.close()
+        try:
+            out_file = open( out_filename, 'wb')
+            out_file.write( response.body)
+            out_file.close()
         
+        except IOError:
+            print 'Failed to save\n\t%s\n\n' % out_filename
+            print IOError.message
+        
+            
     def _process_tender( self, response):
         
         # later on these regex's should be compiled before the download
@@ -186,20 +192,6 @@ class CMRSpider( Spider):
                                callback = lambda data, filename = attachment[1]: self._save_attachment( data, filename))
             iProcurement['pAttachments'] = allAttachments
             
-            #             #     Problem for now with unicode characters in file names 
-            #             try:
-            #                 iProcurement['pAttachments'] = re.findall( ur'Attached\s+Files.*?href.*?"(.*?)".*?\<i\>(.*?)\<.*?(\d{2}\.\d{2}\.\d{4}\s+\d{2}\:\d{2})\<', siteBody, re.UNICODE)[0]
-            #             except IndexError:
-            #                 #sometimes there is no link to the attachment, need to deal with this case
-            #                 iProcurement['pAttachments'] = re.findall( ur'Attached\s+Files.*?\<i\>(.*?)\<.*?(\d{2}\.\d{2}\.\d{4}\s+\d{2}\:\d{2})\<', siteBody, re.UNICODE)[0]
-            #                 
-            #             
-            #             if len( iProcurement['pAttachments']) < 3:
-            #                 iProcurement['pAttachments'] = 'Not available'
-            #             else:
-            #                 yield Request( 'https://' + self.allowed_domains[0] + '/' + iProcurement['pAttachments'][0], 
-            #                                callback = lambda data, filename = iProcurement['pAttachments'][1]: self._save_attachment( data, filename))
-            
             # Contract Type
             iProcurement['pContractType'] = re.findall( ur'Contract\s+type.*?\<div.*?\>(.*?)\<', siteBody, re.UNICODE)[0]
             
@@ -222,9 +214,8 @@ class CMRSpider( Spider):
         # error thrown by ex.findall when extracting beyond the end of the string 
         except IndexError:        
             # TEMP
-            print 'Error scraping url:'
-            print response.url
-        
+            print 'Error scraping url:\n\t%s\n\n' % response.url
+            print IndexError.message
   
         
         
