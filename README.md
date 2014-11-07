@@ -20,7 +20,6 @@ The file format:
 	username = 
 	password = 
 
-### To do
+### TO DO
 
-* extend to store files attached to procurements
 * extend to facilitate incremental scrapes
