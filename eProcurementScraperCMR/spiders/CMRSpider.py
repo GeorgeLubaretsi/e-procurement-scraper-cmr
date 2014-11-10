@@ -7,6 +7,7 @@ from scrapy import Request
 import re, time, os, sys
 from eProcurementScraperCMR.items import Procurement
 from scrapy.exceptions import CloseSpider
+from scrapy.settings.default_settings import CLOSESPIDER_ERRORCOUNT
 
 
 class CMRSpider( Spider):
@@ -222,8 +223,7 @@ class CMRSpider( Spider):
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
             
-            raise CloseSpider('Error occurr    ed')
-  
+            sys.exit(2) # exit with error so jenkins sees it
         
         
         
