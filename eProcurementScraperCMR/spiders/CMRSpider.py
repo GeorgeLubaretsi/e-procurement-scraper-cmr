@@ -4,8 +4,9 @@ from scrapy.http.request.form import FormRequest
 from CMRCredentials import CMRCredentials
 from scrapy.spider import Spider
 from scrapy import Request
-import re, time, os
+import re, time, os, sys
 from eProcurementScraperCMR.items import Procurement
+from scrapy.exceptions import CloseSpider
 
 
 class CMRSpider( Spider):
@@ -117,7 +118,8 @@ class CMRSpider( Spider):
         tenderIDList = self.tender_id_regex.findall( response.body)
         
         # TEMP, limit to one tender for development
-        #for tenderID in tenderIDList[0:1]:
+        #tenderIDList = ['710142']
+        # for tenderID in tenderIDList[0:1]:
         for tenderID in tenderIDList:
             tenderUrl = self.tender_url % ( tenderID, int( time.time() * 1000))
             # print tenderUrl
@@ -140,9 +142,9 @@ class CMRSpider( Spider):
             out_file.write( response.body)
             out_file.close()
         
-        except IOError:
+        except IOError, message:
             print 'Failed to save\n\t%s\n\n' % out_filename
-            print IOError.message
+            print '%s' % message
         
             
     def _process_tender( self, response):
@@ -166,7 +168,7 @@ class CMRSpider( Spider):
             iProcurement['pProcuringEntities'] = re.findall( ur'Procuring\s+entities.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody, re.UNICODE)[0]
             
             # Supplier
-            iProcurement['pSupplier'] = re.findall( ur'Supplier.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody, re.UNICODE)[0]
+            iProcurement['pSupplier'] = re.findall( ur'Supplier.*?\<td\>(.*?)\s*(\#\d+)*\s*\(\s*?(\d+)\s*?\)\<br\>.*?\<strong\>(.*?)\<strong', siteBody, re.UNICODE)[0]
             
             # Amounts
             dAmounts = re.findall( ur'Amounts.*?contract\s+value.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<.*?actually\s+paid\s+amount.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', siteBody, re.UNICODE)[0]
@@ -212,10 +214,15 @@ class CMRSpider( Spider):
             yield iProcurement
             
         # error thrown by ex.findall when extracting beyond the end of the string 
-        except IndexError:        
+        except IndexError, message:        
             # TEMP
             print 'Error scraping url:\n\t%s\n\n' % response.url
-            print IndexError.message
+            print '%s\n\n%s\n\n' % (message, siteBody)
+            exc_type, _, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            
+            raise CloseSpider('Error occurr    ed')
   
         
         
