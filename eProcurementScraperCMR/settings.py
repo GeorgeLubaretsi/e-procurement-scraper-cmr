@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+
 # Scrapy settings for eProcurementScraperCMR project
 #
 # For simplicity, this file contains only the most important settings by
@@ -17,3 +18,6 @@ NEWSPIDER_MODULE = 'eProcurementScraperCMR.spiders'
 USER_AGENT = 'Mozilla/5.0 (Windows; U; MSIE 9.0; WIndows NT 9.0; en-US))'
 
 CONCURRENT_ITEMS = 3
+
+SCHEDULER_DISK_QUEUE = 'scrapy.squeue.PickleFifoDiskQueue'
+SCHEDULER_MEMORY_QUEUE = 'scrapy.squeue.FifoMemoryQueue'

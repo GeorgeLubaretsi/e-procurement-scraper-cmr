@@ -3,11 +3,12 @@
 from scrapy.http.request.form import FormRequest
 from CMRCredentials import CMRCredentials
 from scrapy.spider import Spider
-from scrapy import Request
+from scrapy import Request, log
 import re, time, os, sys
 from eProcurementScraperCMR.items import Procurement
 from scrapy.exceptions import CloseSpider
-from scrapy.settings.default_settings import CLOSESPIDER_ERRORCOUNT
+
+
 
 
 class CMRSpider( Spider):
@@ -15,7 +16,7 @@ class CMRSpider( Spider):
     
     allowed_domains = ['tenders.procurement.gov.ge']
     
-    # logging in
+    # logging inhttp = httplib2.Http()
     login_url = 'https://tenders.procurement.gov.ge/login.php?lang=en'
 
     # this gives the menu on the left-hand side of the page
@@ -49,32 +50,33 @@ class CMRSpider( Spider):
         
         self.attachments_folder = attachments_folder
      
-       
         # setting up attachment saving
-        if self.attachments_folder is None:
-            return 
+        if self.attachments_folder is not None:
+            # create folder if does not exist
+            try:
+                os.stat( self.attachments_folder)
+            except OSError:
+                os.mkdir( self.attachments_folder)
         
-        # create folder if does not exist
-        try:
-            os.stat( self.attachments_folder)
-        except OSError:
-            os.mkdir( self.attachments_folder)
+    
+    # re-usable login request
+    def login_request(self):
+        # CMR data is only available to logged in users
+        siteCreds = CMRCredentials().load_credentials()
+        logindata = {'user' : siteCreds['username'], 'pass' : siteCreds['password']}
+       
+        # this request needs a high priority so when created it is executed ASAP
+        return FormRequest( self.login_url,
+                            formdata = logindata,
+                            callback = self.verify_login,
+                            priority = 100)
         
-
-
-
 
     # before any crawling we need to log in to the site
     def start_requests(self):
-        # CMR data is only available to logged in users
-        siteCreds = CMRCredentials().load_credentials()
-        loginResponse = FormRequest( self.login_url,
-                                     formdata = {'user' : siteCreds['username'], 
-                                                 'pass' : siteCreds['password']},
-                                     callback = self.verify_login)
-
+        
         # scrapy needs a list of responses here to iterate
-        return [loginResponse]
+        return [self.login_request()]
         
     # checking whether we have succeeded logging in        
     def verify_login(self, response):
@@ -84,11 +86,20 @@ class CMRSpider( Spider):
         if "Sign in" in response.body:
             raise Exception( "Couldn't log in to the site")
         
-        return self.make_requests_from_url( self.start_urls[0])
+        
+        return Request( self.start_urls[0])
+            
 
     # mandatory, we're already logged in and can start extracting data
     def parse( self, response):
         
+        if "Session Timed Out" in response.body:
+            # we will need to revisit this page
+            log.msg( "Session Timed Out in ""parse"" - refreshing", level = log.INFO)
+            yield Request( response.request.url, dont_filter=True)
+            yield self.login_request()
+            return
+            
         '''
         I need to read the list and yield a request for each ssp_id I find in the list
         finally, I need to yield a request for the next page
@@ -119,12 +130,10 @@ class CMRSpider( Spider):
         tenderIDList = self.tender_id_regex.findall( response.body)
         
         # TEMP, limit to one tender for development
-        #tenderIDList = ['710142']
-        # for tenderID in tenderIDList[0:1]:
+        #tenderIDList = ['710225']
         for tenderID in tenderIDList:
             tenderUrl = self.tender_url % ( tenderID, int( time.time() * 1000))
             # print tenderUrl
-            
             yield Request( tenderUrl, callback = self._process_tender)
             # I have to wait in order not to send the same timestamp with many requests
             time.sleep( 0.002)
@@ -150,6 +159,18 @@ class CMRSpider( Spider):
             
     def _process_tender( self, response):
         
+        if "Session Timed Out" in response.body:
+            # we will need to revisit this page
+            log.msg( "Session Timed Out in ""_process_tender"" - refreshing", level = log.INFO)
+            yield Request( response.request.url, dont_filter=True)
+            yield self.login_request()
+            return
+        
+        # workaround for session timeout
+        #if self.increment_visited( response) == 0:
+        #    return self.start_requests()
+
+        
         # later on these regex's should be compiled before the download
         
         #f = open( 'tender.html', 'wb')
@@ -169,7 +190,7 @@ class CMRSpider( Spider):
             iProcurement['pProcuringEntities'] = re.findall( ur'Procuring\s+entities.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody, re.UNICODE)[0]
             
             # Supplier
-            iProcurement['pSupplier'] = re.findall( ur'Supplier.*?\<td\>(.*?)\s*(\#\d+)*\s*\(\s*?(\d+)\s*?\)\<br\>.*?\<strong\>(.*?)\<strong', siteBody, re.UNICODE)[0]
+            iProcurement['pSupplier'] = re.findall( ur'Supplier.*?\<td\>(.*)\s+\(\s*(.*?)\s*\)\<br\>.*?\<strong\>(.*?)\<\/strong\>', siteBody, re.UNICODE)[0]
             
             # Amounts
             dAmounts = re.findall( ur'Amounts.*?contract\s+value.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<.*?actually\s+paid\s+amount.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', siteBody, re.UNICODE)[0]
@@ -190,9 +211,16 @@ class CMRSpider( Spider):
             # Attachments 
             allAttachmentsTable = re.findall( ur'Attached\s+Files.*?(\<table.*?\<\/table)', siteBody, re.UNICODE)[0]
             allAttachments = re.findall( ur'href="(.*?)".*?\<i\>(.*?)\<\/i\>', allAttachmentsTable, re.UNICODE)            
+
+            # converting the tuple of tuples into a list of lists as I need to modify the content 
+            allAttachments = [ [item for item in attachment] for attachment in allAttachments]
+
             for attachment in allAttachments:
+                # some file names have backslashes, we need to change that or we can't save the file
+                attachment[1] = attachment[1].replace('/', '-')
                 yield Request( 'https://' + self.allowed_domains[0] + '/' + attachment[0], 
                                callback = lambda data, filename = attachment[1]: self._save_attachment( data, filename))
+                
             iProcurement['pAttachments'] = allAttachments
             
             # Contract Type
@@ -223,7 +251,8 @@ class CMRSpider( Spider):
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
             
-            sys.exit(2) # exit with error so jenkins sees it
+            raise CloseSpider( 'Error occurred')
+  
         
         
         
