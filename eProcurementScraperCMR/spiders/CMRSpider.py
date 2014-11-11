@@ -96,7 +96,7 @@ class CMRSpider( Spider):
         if "Session Timed Out" in response.body:
             # we will need to revisit this page
             log.msg( "Session Timed Out in ""parse"" - refreshing", level = log.INFO)
-            yield Request( response.request.url, dont_filter=True)
+            yield Request( response.request.url, dont_filter=True, priority = 10)
             yield self.login_request()
             return
             
@@ -122,7 +122,7 @@ class CMRSpider( Spider):
             # TEMP comment out to limit to a single tender for development
             #yield None
             nextPageUrl = self.base_url_list.replace( 'search=start&ssp_page=1', 'ssp_page=next') % int( time.time() * 1000)
-            yield Request( nextPageUrl, callback = self.parse)
+            yield Request( nextPageUrl, callback = self.parse, priority = 10)
         
         ''' 
         since we're on a listing page we need to find all the tender id's and yield related requests so tenders can be collected
@@ -134,7 +134,7 @@ class CMRSpider( Spider):
         for tenderID in tenderIDList:
             tenderUrl = self.tender_url % ( tenderID, int( time.time() * 1000))
             # print tenderUrl
-            yield Request( tenderUrl, callback = self._process_tender)
+            yield Request( tenderUrl, callback = self._process_tender, priority = 20)
             # I have to wait in order not to send the same timestamp with many requests
             time.sleep( 0.002)
            
@@ -162,7 +162,7 @@ class CMRSpider( Spider):
         if "Session Timed Out" in response.body:
             # we will need to revisit this page
             log.msg( "Session Timed Out in ""_process_tender"" - refreshing", level = log.INFO)
-            yield Request( response.request.url, dont_filter=True)
+            yield Request( response.request.url, dont_filter=True, priority = 20)
             yield self.login_request()
             return
         
