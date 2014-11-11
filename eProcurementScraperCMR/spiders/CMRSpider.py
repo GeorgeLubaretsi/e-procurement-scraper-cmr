@@ -65,8 +65,8 @@ class CMRSpider( Spider):
         siteCreds = CMRCredentials().load_credentials()
         logindata = {'user' : siteCreds['username'], 'pass' : siteCreds['password']}
        
-        # we're going to go to sleep for 1 second before logging in, to make sure the other side stops being upset
-        time.sleep(1)
+        # we're going to go to sleep for 5 second(s) before logging in, to make sure the other side stops being upset
+        time.sleep(5)
 
         # this request needs a high priority so when created it is executed ASAP
         return FormRequest( self.login_url,
