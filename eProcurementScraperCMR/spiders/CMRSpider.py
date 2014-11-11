@@ -190,7 +190,7 @@ class CMRSpider( Spider):
             iProcurement['pProcuringEntities'] = re.findall( ur'Procuring\s+entities.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody, re.UNICODE)[0]
             
             # Supplier
-            iProcurement['pSupplier'] = re.findall( ur'Supplier.*?\<td\>(.*)\s+\(\s*(.*?)\s*\)\<br\>.*?\<strong\>(.*?)\<\/strong\>', siteBody, re.UNICODE)[0]
+            iProcurement['pSupplier'] = re.findall( ur'Supplier.*?\<td\>(.*)\s+\(\s*(.*?)\s*\)\<br\>.*?\<strong\>(.*?)\</strong\>', siteBody, re.UNICODE)[0]
             
             # Amounts
             dAmounts = re.findall( ur'Amounts.*?contract\s+value.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<.*?actually\s+paid\s+amount.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', siteBody, re.UNICODE)[0]
