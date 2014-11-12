@@ -166,6 +166,10 @@ class CMRSpider( Spider):
 
             siteBody = response.body.replace('\n', '').replace( '\r', '').replace('`', '')
             
+            #CMR ID
+            iProcurement['pCMR'] = re.findall( ur'(CMR\d+)', siteBody, re.UNICODE)[0]
+            print iProcurement
+            
             # Procurement status
             if 'Status:' in siteBody:
                 iProcurement['pStatus'] =  re.findall( ur'Status:.*?\>(.*?)\<', siteBody, re.UNICODE)[0]

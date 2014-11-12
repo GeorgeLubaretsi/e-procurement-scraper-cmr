@@ -11,6 +11,7 @@ import scrapy
 class Procurement(scrapy.Item):
     # define the fields for your item here like:
     # name = scrapy.Field()
+    pCMR = scrapy.Field()
     pStatus = scrapy.Field()
     pProcuringEntities = scrapy.Field()
     pSupplier = scrapy.Field()
