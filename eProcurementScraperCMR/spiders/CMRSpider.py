@@ -156,7 +156,9 @@ class CMRSpider( Spider):
     
 
         self.current_procurement += 1
-                                          
+        if self.current_procurement >= 999999:
+            raise CloseSpider('Finishing at tender 999999')
+        
         yield Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
                        priority = 20, callback = self._process_tender)
                 
@@ -168,7 +170,6 @@ class CMRSpider( Spider):
             
             #CMR ID
             iProcurement['pCMR'] = re.findall( ur'(CMR\d+)', siteBody, re.UNICODE)[0]
-            print iProcurement
             
             # Procurement status
             if 'Status:' in siteBody:
