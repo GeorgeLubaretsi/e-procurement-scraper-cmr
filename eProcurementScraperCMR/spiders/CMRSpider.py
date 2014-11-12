@@ -125,8 +125,8 @@ class CMRSpider( Spider):
             
             nextPageUrl = self.base_url_list.replace( 'search=start&ssp_page=1', 'ssp_page=next') % int( time.time() * 1000)
             # TEMP comment out to limit to a single tender for development
-            yield None
-            #yield Request( nextPageUrl, callback = self.parse, priority = 10)
+            #yield None
+            yield Request( nextPageUrl, callback = self.parse, priority = 10)
         
         ''' 
         since we're on a listing page we need to find all the tender id's and yield related requests so tenders can be collected
@@ -134,7 +134,7 @@ class CMRSpider( Spider):
         tenderIDList = self.tender_id_regex.findall( response.body)
         
         # TEMP, limit to one tender for development
-        tenderIDList = ['711712']
+        #tenderIDList = ['711712']
         for tenderID in tenderIDList:
             tenderUrl = self.tender_url % ( tenderID, int( time.time() * 1000))
             # print tenderUrl
