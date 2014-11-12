@@ -39,16 +39,40 @@ class CMRSpider( Spider):
     https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=708013&_=1415181166565
     '''
     # note %s and %d near the end of the string, these are later replaced with actual values
-    tender_url = 'https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=%s&_=%d'
+    tender_url = 'https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=%d&_=%d'
         
-    def __init__(self, attachments_folder = None, *args, **kwargs):
+    def __init__(self, attachments = None, mode = 'FULL', *args, **kwargs):
         super( CMRSpider, self).__init__( *args, **kwargs)
-        self.base_url_list = 'https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=ssp_list&search=start&ssp_page=1&_=%d'
         
-        self.page_numbers_regex = re.compile( ur'page: (\d+)/(\d+)')
-        self.tender_id_regex = re.compile( ur'ShowSSP\((\d+)\)')
+        self.attachments_folder = attachments
+        self.scrape_mode = mode
+        self.current_procurement = None
         
-        self.attachments_folder = attachments_folder
+        
+    def identify_first_procurement_number(self):
+        
+        first_proc_number = { 'FULL' : 1, 'INCREMENTAL' : None}
+        
+        # need to read, from somewhere the first number to scrape, for now it's just FULL that works
+        
+        #
+        
+        if self.current_procurement is None:
+            self.current_procurement = first_proc_number[ self.scrape_mode]
+        
+        self.log( "Beginning scraping at %d\n" % self.current_procurement, level = log.INFO)
+        
+        return self.current_procurement
+    
+    
+    # before any crawling we need to log in to the site
+    def start_requests(self):
+        
+        self.log('Working mode: %s' % self.scrape_mode, level = log.INFO)
+        if self.attachments_folder is None:
+            self.log('Skipping attachments', level = log.INFO)
+        else:
+            self.log('Saving attachments to %s' % self.attachments_folder, level = log.INFO)
      
         # setting up attachment saving
         if self.attachments_folder is not None:
@@ -57,7 +81,9 @@ class CMRSpider( Spider):
                 os.stat( self.attachments_folder)
             except OSError:
                 os.mkdir( self.attachments_folder)
-        
+
+        # scrapy needs a list of responses here to iterate
+        return [self.login_request()]
     
     # re-usable login request
     def login_request(self):
@@ -75,22 +101,20 @@ class CMRSpider( Spider):
                             priority = 100,
                             dont_filter = True)
 
-    # before any crawling we need to log in to the site
-    def start_requests(self):
-        
-        # scrapy needs a list of responses here to iterate
-        return [self.login_request()]
         
     # checking whether we have succeeded logging in        
     def verify_login(self, response):
         # need to think about a more reliable check
         if not 'Exit' in response.body:
-            raise Exception( "Couldn't log in to the site")
+            raise CloseSpider( "Couldn't log in to the site")
         if "Sign in" in response.body:
-            raise Exception( "Couldn't log in to the site")
+            raise CloseSpider( "Couldn't log in to the site")
         
-        
-        return Request( self.start_urls[0])
+        self.identify_first_procurement_number()
+
+        #return self.make_requests_from_url( self.start_urls[0])
+        return Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
+                        priority = 20, callback = self._process_tender)
             
 
     # mandatory, we're already logged in and can start extracting data
@@ -98,89 +122,37 @@ class CMRSpider( Spider):
         
         if "Session Timed Out" in response.body:
             # we will need to revisit this page
-            log.msg( "Session Timed Out in ""parse"" - refreshing", level = log.INFO)
-            yield Request( response.request.url, dont_filter=True, priority = 10)
+            self.log( "Session Timed Out - refreshing", level = log.INFO)
+            yield Request( response.request.url, dont_filter = True, priority = 20)
             yield self.login_request()
             return
-            
-        '''
-        I need to read the list and yield a request for each ssp_id I find in the list
-        finally, I need to yield a request for the next page
-        '''
+    
+
+        self._process_tender( response)
+
+        self.current_procurement += 1
+                                          
+        yield Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
+                       priority = 20)
         
-        pageNumbers = self.page_numbers_regex.findall( response.body)
-        
-        '''
-        check if we are on a listing, if yes, we generate (or not) a request for the next page
-        and generate requests for the listed tenders
-        
-        tender details are handled directly by their callback
-        '''
-        
-        if len( pageNumbers) == 0: 
-            return
-        
-        # counting pages so we stop creating new calls when we're on the last page
-        if int( pageNumbers[0][0]) <  int( pageNumbers[0][1]): 
-            
-            nextPageUrl = self.base_url_list.replace( 'search=start&ssp_page=1', 'ssp_page=next') % int( time.time() * 1000)
-            # TEMP comment out to limit to a single tender for development
-            #yield None
-            yield Request( nextPageUrl, callback = self.parse, priority = 10)
-        
-        ''' 
-        since we're on a listing page we need to find all the tender id's and yield related requests so tenders can be collected
-        '''
-        tenderIDList = self.tender_id_regex.findall( response.body)
-        
-        # TEMP, limit to one tender for development
-        #tenderIDList = ['711712']
-        for tenderID in tenderIDList:
-            tenderUrl = self.tender_url % ( tenderID, int( time.time() * 1000))
-            # print tenderUrl
-            yield Request( tenderUrl, callback = self._process_tender, priority = 20)
-            # I have to wait in order not to send the same timestamp with many requests
-            time.sleep( 0.002)
-           
-    # saving the attachments
-    def _save_attachment(self, response, out_filename):
-        
-        if self.attachments_folder is None:
-            return 
-        
-        # filename is the last component of the url    
-        out_filename = self.attachments_folder + '/' + out_filename 
-        
-        try:
-            out_file = open( out_filename, 'wb')
-            out_file.write( response.body)
-            out_file.close()
-        
-        except IOError, message:
-            print 'Failed to save\n\t%s\n\n' % out_filename
-            print '%s' % message
-        
-            
+
+
+    # only tender parsing code in here
     def _process_tender( self, response):
         
         if "Session Timed Out" in response.body:
             # we will need to revisit this page
-            log.msg( "Session Timed Out in ""_process_tender"" - refreshing", level = log.INFO)
-            yield Request( response.request.url, dont_filter=True, priority = 20)
+            self.log( "Session Timed Out - refreshing", level = log.INFO)
+            yield Request( response.request.url, dont_filter = True, priority = 20)
             yield self.login_request()
             return
-        
-        # workaround for session timeout
-        #if self.increment_visited( response) == 0:
-        #    return self.start_requests()
+    
 
-        
-        # later on these regex's should be compiled before the download
-        
-        #f = open( 'tender.html', 'wb')
-        #f.write( response.body)
-        #f.close()
-        
+        self.current_procurement += 1
+                                          
+        yield Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
+                       priority = 20, callback = self._process_tender)
+                
         try:
             # Tender parser, yields a Procurement item
             iProcurement = Procurement()
@@ -250,21 +222,45 @@ class CMRSpider( Spider):
             iProcurement['pCPVCodesDetailed'] = re.findall( ur'(\d+\s+.*?)\<\/div', allCodes, re.UNICODE)
             
             yield iProcurement
-            
+
+            self.log( "Processed: %s" % response.url, level = log.INFO)
+       
+        
+
         # error thrown by ex.findall when extracting beyond the end of the string 
-        except IndexError, message:        
+        except IndexError:        
             # TEMP
-            print 'Error scraping url:\n\t%s\n\n' % response.url
-            print '%s\n\n%s\n\n' % (message, siteBody)
-            exc_type, _, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log( 'No valid data for url:%s' % response.url, level = log.ERROR)
+            #print '%s\n\n%s\n\n' % ( message, siteBody)
+            #exc_type, _, exc_tb = sys.exc_info()
+            #fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            #print(exc_type, fname, exc_tb.tb_lineno)
             
-            raise CloseSpider( 'Error occurred')
+            #raise CloseSpider( 'Error occurred')
+            #yield None
 
   
         
         
+    # saving the attachments
+    def _save_attachment(self, response, out_filename):
+        
+        if self.attachments_folder is None:
+            return 
+        
+        # filename is the last component of the url    
+        out_filename = self.attachments_folder + '/' + out_filename 
+        
+        try:
+            out_file = open( out_filename, 'wb')
+            out_file.write( response.body)
+            out_file.close()
+        
+        except IOError, message:
+            print 'Failed to save\n\t%s\n\n' % out_filename
+            print '%s' % message
+        
+            
         
         
         
