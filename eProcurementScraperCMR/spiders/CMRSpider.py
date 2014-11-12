@@ -122,10 +122,11 @@ class CMRSpider( Spider):
         
         # counting pages so we stop creating new calls when we're on the last page
         if int( pageNumbers[0][0]) <  int( pageNumbers[0][1]): 
-            # TEMP comment out to limit to a single tender for development
-            #yield None
+            
             nextPageUrl = self.base_url_list.replace( 'search=start&ssp_page=1', 'ssp_page=next') % int( time.time() * 1000)
-            yield Request( nextPageUrl, callback = self.parse, priority = 10)
+            # TEMP comment out to limit to a single tender for development
+            yield None
+            #yield Request( nextPageUrl, callback = self.parse, priority = 10)
         
         ''' 
         since we're on a listing page we need to find all the tender id's and yield related requests so tenders can be collected
@@ -133,7 +134,7 @@ class CMRSpider( Spider):
         tenderIDList = self.tender_id_regex.findall( response.body)
         
         # TEMP, limit to one tender for development
-        #tenderIDList = ['710225']
+        tenderIDList = ['711712']
         for tenderID in tenderIDList:
             tenderUrl = self.tender_url % ( tenderID, int( time.time() * 1000))
             # print tenderUrl
@@ -187,7 +188,10 @@ class CMRSpider( Spider):
             siteBody = response.body.replace('\n', '').replace( '\r', '').replace('`', '')
             
             # Procurement status
-            iProcurement['pStatus'] =  re.findall( ur'Status:.*?\>(.*?)\<', siteBody, re.UNICODE)[0]
+            if 'Status:' in siteBody:
+                iProcurement['pStatus'] =  re.findall( ur'Status:.*?\>(.*?)\<', siteBody, re.UNICODE)[0]
+            else:
+                iProcurement['pStatus'] = ''
             
             # Procuring Entities
             iProcurement['pProcuringEntities'] = re.findall( ur'Procuring\s+entities.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody, re.UNICODE)[0]
@@ -196,12 +200,14 @@ class CMRSpider( Spider):
             iProcurement['pSupplier'] = re.findall( ur'Supplier.*?\<td\>(.*)\s+\(\s*(.*?)\s*\)\<br\>.*?\<strong\>(.*?)\</strong\>', siteBody, re.UNICODE)[0]
             
             # Amounts
-            dAmounts = re.findall( ur'Amounts.*?contract\s+value.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<.*?actually\s+paid\s+amount.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', siteBody, re.UNICODE)[0]
-            iProcurement['pValueDate'] = dAmounts[0]
-            iProcurement['pValueContract'] = dAmounts[1]
-            iProcurement['pAmountPaidDate'] = dAmounts[2]
-            iProcurement['pAmountPaid'] = dAmounts[3]
-    
+            allAmounts = re.findall( ur'Amounts.*?\<table.*?\>(.*?)\</table\>', siteBody, re.UNICODE)[0]
+            iProcurement['pValueDate'], iProcurement['pValueContract'] = re.findall( ur'contract\s+value.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', allAmounts)[0]
+            
+            paidAmounts =  re.findall( ur'actually\s+paid\s+amount.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', allAmounts)
+            
+            iProcurement['pAmountPaidDate'] = [ date for ( date, _) in paidAmounts]
+            iProcurement['pAmountPaid'] = [ value for ( _, value) in paidAmounts]
+                         
             # Financing source
             iProcurement['pFinancingSource'] = re.findall( ur'Financing\s+source.*?\<td\>(.*?)\s*\<br\>.*?\<strong\>(.*?)\<', siteBody, re.UNICODE)[0]
             
@@ -255,6 +261,7 @@ class CMRSpider( Spider):
             print(exc_type, fname, exc_tb.tb_lineno)
             
             raise CloseSpider( 'Error occurred')
+
   
         
         
