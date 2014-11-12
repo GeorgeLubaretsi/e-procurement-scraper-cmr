@@ -4,7 +4,7 @@ from scrapy.http.request.form import FormRequest
 from CMRCredentials import CMRCredentials
 from scrapy.spider import Spider
 from scrapy import Request, log
-import re, time, os, sys
+import re, time, os
 from eProcurementScraperCMR.items import Procurement
 from scrapy.exceptions import CloseSpider
 
@@ -48,14 +48,21 @@ class CMRSpider( Spider):
         self.scrape_mode = mode
         self.current_procurement = None
         
+        self.scrape_info = os.getenv( 'HOME') + '/.cmrinfo'
+        
         
     def identify_first_procurement_number(self):
         
         first_proc_number = { 'FULL' : 1, 'INCREMENTAL' : None}
         
-        # need to read, from somewhere the first number to scrape, for now it's just FULL that works
+        # need to read the first number to scrape
+        first_proc_number['INCREMENTAL'] = first_proc_number['FULL']
+        if os.path.isfile( self.scrape_info):
+            fileDesc = open( self.scrape_info)
+            first_proc_number['INCREMENTAL'] = int( fileDesc.read()) + 1
+            fileDesc.close()
+            
         
-        #
         
         if self.current_procurement is None:
             self.current_procurement = first_proc_number[ self.scrape_mode]
@@ -224,8 +231,8 @@ class CMRSpider( Spider):
             yield iProcurement
 
             self.log( "Processed: %s" % response.url, level = log.INFO)
-       
-        
+            
+
 
         # error thrown by ex.findall when extracting beyond the end of the string 
         except IndexError:        
@@ -238,6 +245,11 @@ class CMRSpider( Spider):
             
             #raise CloseSpider( 'Error occurred')
             #yield None
+                        # save the information about the last scraped number for incremental scrapes
+        infoFileDesc = open( self.scrape_info, 'wb')
+        scrapedNumber = re.findall( ur'&ssp_id=(\d+)&', response.url, re.UNICODE)
+        infoFileDesc.write( scrapedNumber[0] + '\n')
+        infoFileDesc.close()
 
   
         
