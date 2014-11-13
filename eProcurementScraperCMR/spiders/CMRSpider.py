@@ -49,6 +49,7 @@ class CMRSpider( Spider):
         self.current_procurement = None
         
         self.scrape_info = os.getenv( 'HOME') + '/.cmrinfo'
+        self.regex = {}
         
         
     def identify_first_procurement_number(self):
@@ -89,6 +90,7 @@ class CMRSpider( Spider):
             except OSError:
                 os.mkdir( self.attachments_folder)
 
+        self._compile_regex()
         # scrapy needs a list of responses here to iterate
         return [self.login_request()]
     
@@ -169,41 +171,41 @@ class CMRSpider( Spider):
             siteBody = response.body.replace('\n', '').replace( '\r', '').replace('`', '')
             
             #CMR ID
-            iProcurement['pCMR'] = re.findall( ur'(CMR\d+)', siteBody, re.UNICODE)[0]
+            iProcurement['pCMR'] = self.regex['pCMR'].findall( siteBody)[0]
             
             # Procurement status
             if 'Status:' in siteBody:
-                iProcurement['pStatus'] =  re.findall( ur'Status:.*?\>(.*?)\<', siteBody, re.UNICODE)[0]
+                iProcurement['pStatus'] =  self.regex['pStatus'].findall( siteBody)[0]
             else:
                 iProcurement['pStatus'] = ''
             
             # Procuring Entities
-            iProcurement['pProcuringEntities'] = re.findall( ur'Procuring\s+entities.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', siteBody, re.UNICODE)[0]
+            iProcurement['pProcuringEntities'] = self.regex['pProcuringEntities'].findall( siteBody)[0]
             
             # Supplier
-            iProcurement['pSupplier'] = re.findall( ur'Supplier.*?\<td\>(.*)\s+\(\s*(.*?)\s*\)\<br\>.*?\<strong\>(.*?)\</strong\>', siteBody, re.UNICODE)[0]
+            iProcurement['pSupplier'] = self.regex['pSupplier'].findall( siteBody)[0]
             
             # Amounts
-            allAmounts = re.findall( ur'Amounts.*?\<table.*?\>(.*?)\</table\>', siteBody, re.UNICODE)[0]
-            iProcurement['pValueDate'], iProcurement['pValueContract'] = re.findall( ur'contract\s+value.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', allAmounts)[0]
+            allAmounts = self.regex['allAmounts'].findall( siteBody)[0]
+            iProcurement['pValueDate'], iProcurement['pValueContract'] = self.regex['pValueDateAndContract'].findall( allAmounts)[0]
             
-            paidAmounts =  re.findall( ur'actually\s+paid\s+amount.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', allAmounts)
+            paidAmounts =  self.regex['paidAmounts'].findall( allAmounts)
             
             iProcurement['pAmountPaidDate'] = [ date for ( date, _) in paidAmounts]
             iProcurement['pAmountPaid'] = [ value for ( _, value) in paidAmounts]
                          
             # Financing source
-            iProcurement['pFinancingSource'] = re.findall( ur'Financing\s+source.*?\<td\>(.*?)\s*\<br\>.*?\<strong\>(.*?)\<', siteBody, re.UNICODE)[0]
+            iProcurement['pFinancingSource'] = self.regex['pFinancingSource'].findall( siteBody)[0]
             
             # Procurement Base
-            iProcurement['pProcurementBase'] = re.findall( ur'Procurement\s+Base.*?\<td\>[&quot;]?(.*?)[&quot;]?\s*\<', siteBody, re.UNICODE)[0]
+            iProcurement['pProcurementBase'] = self.regex['pProcurementBase'].findall( siteBody)[0]
             
             # Document
-            iProcurement['pDocument'] = re.findall( ur'Document.*?\<td.*?\>(.*?)\s*\<br.*?\>(#\s*.*?)\<br.*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4})\<', siteBody, re.UNICODE)[0]
+            iProcurement['pDocument'] = self.regex['pDocument'].findall( siteBody)[0]
             
             # Attachments 
-            allAttachmentsTable = re.findall( ur'Attached\s+Files.*?(\<table.*?\<\/table)', siteBody, re.UNICODE)[0]
-            allAttachments = re.findall( ur'href="(.*?)".*?\<i\>(.*?)\<\/i\>', allAttachmentsTable, re.UNICODE)            
+            allAttachmentsTable = self.regex['allAttachmentsTable'].findall( siteBody)[0]
+            allAttachments = self.regex['allAttachments'].findall( allAttachmentsTable)            
 
             # converting the tuple of tuples into a list of lists as I need to modify the content 
             allAttachments = [ [item for item in attachment] for attachment in allAttachments]
@@ -217,21 +219,21 @@ class CMRSpider( Spider):
             iProcurement['pAttachments'] = allAttachments
             
             # Contract Type
-            iProcurement['pContractType'] = re.findall( ur'Contract\s+type.*?\<div.*?\>(.*?)\<', siteBody, re.UNICODE)[0]
+            iProcurement['pContractType'] = self.regex['pContractType'].findall( siteBody)[0]
             
             # Agreement Amount
-            iProcurement['pAgreementAmount'] = re.findall( ur'Agreement\s+Amount.*?\<div.*?\>(\d+\.*\d* \w+)\<', siteBody, re.UNICODE)[0]
+            iProcurement['pAgreementAmount'] = self.regex['pAgreementAmount'].findall( siteBody)[0]
             
             # Agreement Done
-            iProcurement['pAgreementDone'] = re.findall( ur'Agreement\s+Done.*?\<div.*?\>(.*?)\<', siteBody, re.UNICODE)[0]
+            iProcurement['pAgreementDone'] = self.regex['pAgreementDone'].findall( siteBody)[0]
             
             # CPV Codes (main)
-            allCodes = re.findall(  ur'CPV\s+Codes\s+\(main\)\<\/div\>(.*?\<\/div\>)&nbsp;', siteBody, re.UNICODE)[0]
-            iProcurement['pCPVCodesMain'] = re.findall( ur'(\d+\s+.*?)\<\/div', allCodes, re.UNICODE)
+            allCodesMain = self.regex['allCodesMain'].findall(  siteBody)[0]
+            iProcurement['pCPVCodesMain'] = self.regex['pCPVCodesMain'].findall( allCodesMain)
             
             # CPV Codes( detailed)
-            allCodes = re.findall(  ur'CPV\s+Codes\s+\(detailed\)\<\/div\>(.*?\<\/div\>)&nbsp;', siteBody, re.UNICODE)[0]
-            iProcurement['pCPVCodesDetailed'] = re.findall( ur'(\d+\s+.*?)\<\/div', allCodes, re.UNICODE)
+            allCodesDetailed = self.regex['allCodesDetailed'].findall(  siteBody)[0]
+            iProcurement['pCPVCodesDetailed'] = self.regex['pCPVCodesDetailed'].findall( allCodesDetailed)
             
             yield iProcurement
 
@@ -256,8 +258,6 @@ class CMRSpider( Spider):
         infoFileDesc.write( scrapedNumber[0] + '\n')
         infoFileDesc.close()
 
-  
-        
         
     # saving the attachments
     def _save_attachment(self, response, out_filename):
@@ -280,7 +280,55 @@ class CMRSpider( Spider):
             
         
         
+    # we pre-compile all regex's to save time in execution
+    def _compile_regex(self):
+        #CMR ID
+        self.regex['pCMR'] = re.compile( ur'(CMR\d+)', re.UNICODE)
         
+        self.regex['pStatus'] =  re.compile( ur'Status:.*?\>(.*?)\<', re.UNICODE)
         
+        # Procuring Entities
+        self.regex['pProcuringEntities'] = re.compile( ur'Procuring\s+entities.*?\<td\>(.*?)\s*(\#\d+)*\s*\((\d+)\)\<br\>.*?\<strong\>(.*?)\<', re.UNICODE)
+        
+        # Supplier
+        self.regex['pSupplier'] = re.compile( ur'Supplier.*?\<td\>(.*)\s+\(\s*(.*?)\s*\)\<br\>.*?\<strong\>(.*?)\</strong\>', re.UNICODE)
+        
+        # Amounts
+        self.regex['allAmounts'] = re.compile( ur'Amounts.*?\<table.*?\>(.*?)\</table\>', re.UNICODE)
+        self.regex['pValueDateAndContract'] = re.compile( ur'contract\s+value.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', re.UNICODE)
+        
+        self.regex['paidAmounts'] =  re.compile( ur'actually\s+paid\s+amount.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', re.UNICODE)
+        
+        # Financing source
+        self.regex['pFinancingSource'] = re.compile( ur'Financing\s+source.*?\<td\>(.*?)\s*\<br\>.*?\<strong\>(.*?)\<', re.UNICODE)
+        
+        # Procurement Base
+        self.regex['pProcurementBase'] = re.compile( ur'Procurement\s+Base.*?\<td\>[&quot;]?(.*?)[&quot;]?\s*\<', re.UNICODE)
+        
+        # Document
+        self.regex['pDocument'] = re.compile( ur'Document.*?\<td.*?\>(.*?)\s*\<br.*?\>(#\s*.*?)\<br.*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4}).*?(\d{2}\.\d{2}\.\d{4})\<', re.UNICODE)
+        
+        # Attachments 
+        self.regex['allAttachmentsTable'] = re.compile( ur'Attached\s+Files.*?(\<table.*?\<\/table)', re.UNICODE)
+        self.regex['allAttachments'] = re.compile( ur'href="(.*?)".*?\<i\>(.*?)\<\/i\>', re.UNICODE)            
+
+        # Contract Type
+        self.regex['pContractType'] = re.compile( ur'Contract\s+type.*?\<div.*?\>(.*?)\<', re.UNICODE)
+        
+        # Agreement Amount
+        self.regex['pAgreementAmount'] = re.compile( ur'Agreement\s+Amount.*?\<div.*?\>(\d+\.*\d* \w+)\<', re.UNICODE)
+        
+        # Agreement Done
+        self.regex['pAgreementDone'] = re.compile( ur'Agreement\s+Done.*?\<div.*?\>(.*?)\<', re.UNICODE)
+        
+        # CPV Codes (main)
+        self.regex['allCodesMain'] = re.compile(  ur'CPV\s+Codes\s+\(main\)\<\/div\>(.*?\<\/div\>)&nbsp;', re.UNICODE)
+        self.regex['pCPVCodesMain'] = re.compile( ur'(\d+\s+.*?)\<\/div', re.UNICODE)
+        
+        # CPV Codes( detailed)
+        self.regex['allCodesDetailed'] = re.compile(  ur'CPV\s+Codes\s+\(detailed\)\<\/div\>(.*?\<\/div\>)&nbsp;', re.UNICODE)
+        self.regex['pCPVCodesDetailed'] = re.compile( ur'(\d+\s+.*?)\<\/div', re.UNICODE)
+        
+        self.log( 'Regex Compiled', level = log.INFO)
         
     
