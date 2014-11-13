@@ -164,11 +164,26 @@ class CMRSpider( Spider):
         yield Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
                        priority = 20, callback = self._process_tender)
                 
+        '''
+        these two elements are taken out to make sure they exists in case 
+        data can't be retrieved (no data, non-existend webid
+        '''
+                
+        # Tender parser yields a Procurement item
+        iProcurement = Procurement()
+        # the id we use form the url, its an id we can use to refer back to the website for updated data on procurements
+        iProcurement['pWebID'] = self.regex['pWebID'].findall( response.url)[0]            
+
+        # saving the processed webID so we do not visit it again with the next run of the scraper
+        infoFileDesc = open( self.scrape_info, 'wb')
+        infoFileDesc.write( iProcurement['pWebID'] + '\n')
+        infoFileDesc.close()
+
+
         try:
-            # Tender parser, yields a Procurement item
-            iProcurement = Procurement()
 
             siteBody = response.body.replace('\n', '').replace( '\r', '').replace('`', '')
+
             
             #CMR ID
             iProcurement['pCMR'] = self.regex['pCMR'].findall( siteBody)[0]
@@ -252,12 +267,7 @@ class CMRSpider( Spider):
             
             #raise CloseSpider( 'Error occurred')
             #yield None
-                        # save the information about the last scraped number for incremental scrapes
-        infoFileDesc = open( self.scrape_info, 'wb')
-        scrapedNumber = re.findall( ur'&ssp_id=(\d+)&', response.url, re.UNICODE)
-        infoFileDesc.write( scrapedNumber[0] + '\n')
-        infoFileDesc.close()
-
+            # save the information about the last scraped number for incremental scrapes
         
     # saving the attachments
     def _save_attachment(self, response, out_filename):
@@ -328,6 +338,10 @@ class CMRSpider( Spider):
         # CPV Codes( detailed)
         self.regex['allCodesDetailed'] = re.compile(  ur'CPV\s+Codes\s+\(detailed\)\<\/div\>(.*?\<\/div\>)&nbsp;', re.UNICODE)
         self.regex['pCPVCodesDetailed'] = re.compile( ur'(\d+\s+.*?)\<\/div', re.UNICODE)
+        
+        # web id
+        self.regex['pWebID'] = re.compile( ur'&ssp_id=(\d+)&', re.UNICODE)
+        
         
         self.log( 'Regex Compiled', level = log.INFO)
         
