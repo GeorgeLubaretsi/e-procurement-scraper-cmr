@@ -128,21 +128,21 @@ class CMRSpider( Spider):
 
     # mandatory, we're already logged in and can start extracting data
     def parse( self, response):
-        
-        if "Session Timed Out" in response.body:
-            # we will need to revisit this page
-            self.log( "Session Timed Out - refreshing", level = log.INFO)
-            yield Request( response.request.url, dont_filter = True, priority = 20)
-            yield self.login_request()
-            return
-    
-
-        self._process_tender( response)
-
-        self.current_procurement += 1
-                                          
-        yield Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
-                       priority = 20)
+        pass 
+    #         if "Session Timed Out" in response.body:
+    #             # we will need to revisit this page
+    #             self.log( "Session Timed Out - refreshing", level = log.INFO)
+    #             yield Request( response.request.url, dont_filter = True, priority = 20)
+    #             yield self.login_request()
+    #             return
+    #      
+    #  
+    #         self._process_tender( response)
+    #  
+    #         self.current_procurement += 1
+    #                                            
+    #         yield Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
+    #                        priority = 20)
         
 
 
