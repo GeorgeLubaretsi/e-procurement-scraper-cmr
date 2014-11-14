@@ -7,7 +7,6 @@ from scrapy import Request, log
 import re, time, os
 from eProcurementScraperCMR.items import Procurement
 from scrapy.exceptions import CloseSpider
-from time import sleep
 
 
 
