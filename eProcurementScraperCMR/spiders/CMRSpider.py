@@ -130,6 +130,7 @@ class CMRSpider( Spider):
             self.log('Failed to re-login - retrying', level = log.ERROR)
             time.sleep(5) 
             return self.login_request()
+        
 
     # mandatory, we're already logged in and can start extracting data
     def parse( self, response):
