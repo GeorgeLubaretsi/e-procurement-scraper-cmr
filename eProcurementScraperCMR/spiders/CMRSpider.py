@@ -7,6 +7,7 @@ from scrapy import Request, log
 import re, time, os
 from eProcurementScraperCMR.items import Procurement
 from scrapy.exceptions import CloseSpider
+from time import sleep
 
 
 
@@ -113,18 +114,23 @@ class CMRSpider( Spider):
         
     # checking whether we have succeeded logging in        
     def verify_login(self, response):
-        # need to think about a more reliable check
-        if not 'Exit' in response.body:
-            raise CloseSpider( "Couldn't log in to the site")
-        if "Sign in" in response.body:
-            raise CloseSpider( "Couldn't log in to the site")
-        
-        self.identify_first_procurement_number()
-
-        #return self.make_requests_from_url( self.start_urls[0])
-        return Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
-                        priority = 20, callback = self._process_tender)
+        try:
+            # need to think about a more reliable check
+            if not 'Exit' in response.body:
+                raise CloseSpider( "Couldn't log in to the site")
+            if "Sign in" in response.body:
+                raise CloseSpider( "Couldn't log in to the site")
             
+            self.identify_first_procurement_number()
+    
+            #return self.make_requests_from_url( self.start_urls[0])
+            return Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
+                            priority = 20, callback = self._process_tender)
+
+        except AttributeError:
+            self.log('Failed to re-login - retrying', level = log.ERROR)
+            time.sleep(5)
+            return self.login_request()
 
     # mandatory, we're already logged in and can start extracting data
     def parse( self, response):
