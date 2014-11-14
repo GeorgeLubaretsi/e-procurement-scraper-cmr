@@ -7,7 +7,7 @@ A scraper for simplified, direct procurements.
 	cd e-procurement-scraper-cmr
 	scrapy crawl CMRSpider -o out_folder/out_file.json -a attachments=folder_name -a mode=scrape_mode
 	
-	[Defaults: attachments = None (not downloading attachments, scrape_mode = FULL]
+	[Defaults: attachments = None (not downloading attachments), scrape_mode = FULL]
 
 ### Requirements
 
@@ -23,4 +23,6 @@ The file format:
 	password = 
 
 ### TO DO
+
+* Verify why after session time-out the scraper has problems logging back in.
 
