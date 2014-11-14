@@ -171,6 +171,7 @@ class CMRSpider( Spider):
                 
         # Tender parser yields a Procurement item
         iProcurement = Procurement()
+        
         # the id we use form the url, its an id we can use to refer back to the website for updated data on procurements
         iProcurement['pWebID'] = self.regex['pWebID'].findall( response.url)[0]            
 

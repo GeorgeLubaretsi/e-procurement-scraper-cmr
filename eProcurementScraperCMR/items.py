@@ -28,5 +28,6 @@ class Procurement(scrapy.Item):
     pAgreementDone = scrapy.Field()
     pCPVCodesMain = scrapy.Field()
     pCPVCodesDetailed = scrapy.Field()
-    pWebID = scrapy.Item()
+    pWebID = scrapy.Field()
+    
     
