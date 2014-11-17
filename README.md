@@ -1,4 +1,7 @@
 # e-procurement-scraper-cmr
+## Current Version: 1.0.xx
+
+***
 
 A scraper for simplified, direct procurements. 
 
@@ -25,4 +28,4 @@ The file format:
 ### TO DO
 
 * Verify why after session time-out the scraper has problems logging back in.
-
+* Implement re-scrape for a list of indicated procurements for which the data should be refreshed
