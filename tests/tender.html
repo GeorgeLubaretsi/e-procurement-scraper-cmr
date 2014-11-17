@@ -1,0 +1,215 @@
+<style>
+.alabel {
+	width:180px;
+	float:left;
+	color:#ff0084;
+	text-align:right;
+}
+.adata {
+	margin: 0 0 10px 190px;
+}
+
+#upper .adata {
+	border-bottom:1px dotted #ddd;	
+}
+
+.adata div {
+	margin:2px 0;
+}
+
+#agr_block .alabel {width:220px}
+#agr_block .adata {margin: 0 0 10px 230px;}
+.G10 {color:#0073EA}
+.G20 {color:green}
+.G30 {color:red}
+
+</style>
+
+<div style="border:1px solid #ddd;margin-bottom:4px" class="pad4px ui-state-highlight ui-corner-all">
+<div class="color-2" style="float:right;margin-top:6px;font-size:1.3em;font-weight:bold">
+
+CMR140166032
+</div>
+
+
+<button type="button" id="go_back">Back</button>
+<button type="button" id="reload">Refresh</button>
+
+
+
+</div>
+
+<div id="upper" style="border:1px solid #ddd;margin-bottom:4px" class="pad4px ui-corner-all">
+
+<p align="center">Status: <span class="agrfg20">Fulfilled contract</span></p>
+
+<div class="alabel">Procuring entities</div>
+<div class="adata">
+	<table width="100%">
+	<tr>
+		<td>Lagodekhi Municipality Preschool Educational Institutions Union  (233146798)<br><span class="date"><strong>100%</strong></span></td>
+	</tr>
+</table>
+</div>
+
+<div class="alabel">Supplier</div>
+<div class="adata">
+	<table width="100%">
+	<tr>
+		<td>p.p.,,gela korghanashvili' (25001033287)<br><!--<span class="date"><strong>100%</strong></span>--></td>
+	</tr>
+</table>
+</div>
+	
+<div class="alabel">Amounts</div>
+<div class="adata">
+	<table width="100%">
+		<tr>
+			<td>contract value. <span class=""></span><br><span class="date">07.11.2014</span></td>
+			<td align="right"><strong>100.00 GEL</strong></td>
+		</tr><tr>
+			<td>actually paid amount. <span class=""></span><br><span class="date">07.11.2014</span></td>
+			<td align="right"><strong>100.00 GEL</strong></td>
+		</tr>
+	</table>
+	
+</div>
+
+<div class="alabel">Financing source</div>
+<div class="adata">
+	<table width="100%">
+		<tr>
+			<td>budget of self-governing entity<br><span class="date"><strong>100%</strong></span></td>
+		</tr>
+	</table>
+</div>
+
+<div class="alabel">Procurement Base</div>
+<div class="adata">
+		<table width="100%">
+		<tr>
+			<td>in compliance with monetary threshold<br></td>
+		</tr>
+	</table>
+</div>
+
+<div class="alabel">Document</div>
+<div class="adata">
+	<table width="100%">
+	<tr>
+		<td valign="top">Main<br><span class="date"></span></td>
+		<td># #70<br><span class="date">24.10.2014</span></td>
+		<td class="status">Valid: 24.10.2014 - 31.10.2014</td>
+	</tr>
+	</table>	
+</div>
+
+<div class="alabel">Attached Files</div>
+<div class="adata">
+<table border="0" width="100%">
+	<tr>
+		<td class="obsolete0">
+			<span><a target="blank" href="engine/ssp/document.php?code=/prod/disk008/2014/11/07/262e8bbf66f5e892420dae20ce974a3e-1028717&mime=application/pdf&save=ხელშეკრულება #70 ~ #70.pdf"><i>ხელშეკრულება #70 ~ #70.pdf</i></a></span>
+			
+			<br>&nbsp;</td>
+		<td class="obsolete0" align="right"><span class="date">07.11.2014 12:59</span></td>
+	</tr>
+</table>
+</div>
+
+</div>
+
+<div id="agr_block" style="margin-bottom:4px" class="pad4px ui-corner-all ui-state-highlight">
+
+
+<div class="alabel">Contract type</div>
+<div class="adata">simplified purchase
+</div>
+
+<div class="alabel">Agreement Amount</div>
+<div class="adata">100.00 GEL
+</div>
+
+<div class="alabel">Agreement Done</div>
+<div class="adata">annual (1)
+</div>
+
+<div class="alabel">CPV Codes (main)</div>
+<div class="adata"><div>77200000 - Forestry services</div>&nbsp;
+</div>
+
+<div class="alabel">CPV Codes (detailed)</div>
+<div class="adata"><div>77210000 - Logging services</div>&nbsp;
+</div>
+
+
+
+</div>
+
+
+
+<script type="text/javascript">
+$(document).ready(function() {
+	
+	var ssp_id = 709330;
+
+    $('.next-status').click(function(){
+        $('#apply_status').button().button('enable');
+    });
+    
+    
+    $('#apply_status').button({icons:{primary: "ui-icon-gear"}}).button('disable');
+    
+    $('#apply_status').click(function(){
+        JQConfirm('Change agreement status', function(){
+            $.get('engine/ssp/ssp_controller.php', {
+                action: 'change_agree_status',
+                ssp_id: ssp_id,
+                new_status: $('input[name=next_status]:checked').val()
+            }, function(res){
+                ShowSSP(ssp_id);
+            });
+        },'აღნიშნული ქმედების შედეგად შეუძლებელი იქნება ხელშეკრულებისთვის სხვა სტატუსის მინიჭება ან/და მინიჭებული სტატუსის შეცვლა',1);      
+    });
+
+	
+	$('#go_back').button({icons:{primary: "ui-icon-triangle-1-w"}}).click(function(){
+			$('#sspitem').hide();
+			$('#ssplist').show();
+			$.get('engine/ssp/ssp_controller.php', {action:'ssp_list', ssp_page:'current'}, function(res){$('#ssplist').html(res);});
+	});
+
+	$('#reload').button({icons:{primary: "ui-icon-refresh"}}).click(function(){
+		ShowSSP(ssp_id)
+	});
+
+	$('.warning').click(function(){
+		Notify("დაფინანსების წყაროების არ არის მითითებული, ან წილების ჯამი არ არის 100%");
+	});
+	
+    $('#lock').button({icons: {primary: "ui-icon-locked"}}).click(function(){
+        $.get('engine/ssp/ssp_controller.php',
+            {
+                action: 'view',
+                lock: 1,
+                ssp_id: ssp_id,
+            },
+            function(data){
+            $('#sspitem').html(data);
+        });
+    });
+    $('#unlock').button({icons: {primary: "ui-icon-unlocked"}}).click(function(){
+        $.get('engine/ssp/ssp_controller.php',
+            {
+                action: 'view',
+                lock: 0,
+                ssp_id: ssp_id,
+            },
+            function(data){
+            $('#sspitem').html(data);
+        });        
+    })
+		
+});
+
+</script>
