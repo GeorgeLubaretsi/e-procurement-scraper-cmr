@@ -7,6 +7,8 @@ Created on Nov 5, 2014
 import ConfigParser
 import os
 
+__version__ = '1.0'
+
 class CMRCredentials(object):
     '''
     classdocs

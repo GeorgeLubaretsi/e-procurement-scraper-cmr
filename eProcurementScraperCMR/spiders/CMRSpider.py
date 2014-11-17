@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from scrapy.http.request.form import FormRequest
-from CMRCredentials import CMRCredentials
+from eProcurementScraperCMR.CMRCredentials import CMRCredentials
 from scrapy.spider import Spider
 from scrapy import Request, log
 import re, time, os

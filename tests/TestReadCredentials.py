@@ -4,7 +4,7 @@ Created on Nov 5, 2014
 @author: msuliga
 '''
 import unittest
-from CMRCredentials import CMRCredentials
+from eProcurementScraperCMR.CMRCredentials import CMRCredentials
 
 
 class Test(unittest.TestCase):
