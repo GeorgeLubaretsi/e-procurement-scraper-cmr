@@ -101,7 +101,7 @@ class CMRSpider( Spider):
         logindata = {'user' : siteCreds['username'], 'pass' : siteCreds['password']}
        
         # we're going to go to sleep for 5 second(s) before logging in, to make sure the other side stops being upset
-        time.sleep(5)
+        # time.sleep(5)
 
         # this request needs a high priority so when created it is executed ASAP
         return FormRequest( self.login_url,
@@ -151,8 +151,8 @@ class CMRSpider( Spider):
         if "Session Timed Out" in response.body:
             # we will need to revisit this page
             self.log( "Session Timed Out - refreshing", level = log.INFO)
-            yield Request( response.request.url, dont_filter = True, priority = 20)
             yield self.login_request()
+            yield Request( response.request.url, dont_filter = True, priority = 20)
             return
     
 
