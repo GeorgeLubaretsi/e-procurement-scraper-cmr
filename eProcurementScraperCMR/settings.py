@@ -22,4 +22,4 @@ CONCURRENT_ITEMS = 10
 SCHEDULER_DISK_QUEUE = 'scrapy.squeue.PickleFifoDiskQueue'
 SCHEDULER_MEMORY_QUEUE = 'scrapy.squeue.FifoMemoryQueue'
 
-DOWNLOAD_DELAT = 0.01
+DOWNLOAD_DELAY = 0.01
