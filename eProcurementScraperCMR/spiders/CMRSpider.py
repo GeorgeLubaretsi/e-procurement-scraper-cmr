@@ -41,20 +41,28 @@ class CMRSpider( Spider):
     # note %s and %d near the end of the string, these are later replaced with actual values
     tender_url = 'https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=%d&_=%d'
         
-    def __init__(self, attachments = None, mode = 'FULL', *args, **kwargs):
+    def __init__(self, attachments = None, mode = 'FULL', updates = '', *args, **kwargs):
         super( CMRSpider, self).__init__( *args, **kwargs)
         
         self.attachments_folder = attachments
         self.scrape_mode = mode
         self.current_procurement = None
+        self.updates_file = updates
         
         self.scrape_info = os.getenv( 'HOME') + '/.cmrinfo'
         self.regex = {}
+        self.tender_ids = []
         
+        
+    def read_requested_tender_list(self):
+        
+        with open( self.updates_file) as fileDesc:
+            for line in fileDesc:
+                self.tender_ids.append( int( line))
         
     def identify_first_procurement_number(self):
         
-        first_proc_number = { 'FULL' : 1, 'INCREMENTAL' : None}
+        first_proc_number = { 'FULL' : 1, 'INCREMENTAL' : None, 'UPDATE' : 0}
         
         # need to read the first number to scrape
         first_proc_number['INCREMENTAL'] = first_proc_number['FULL']
@@ -62,11 +70,14 @@ class CMRSpider( Spider):
             fileDesc = open( self.scrape_info)
             first_proc_number['INCREMENTAL'] = int( fileDesc.read()) + 1
             fileDesc.close()
-            
-        
         
         if self.current_procurement is None:
             self.current_procurement = first_proc_number[ self.scrape_mode]
+        
+        # updating requested tenders only
+        
+        if self.scrape_mode == 'UPDATE':
+            self.read_requested_tender_list()
         
         self.log( "Beginning scraping at %d\n" % self.current_procurement, level = log.INFO)
         
@@ -122,8 +133,12 @@ class CMRSpider( Spider):
         self.identify_first_procurement_number()
 
         #return self.make_requests_from_url( self.start_urls[0])
-        return Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
-                        priority = 20, callback = self._process_tender)
+        if self.scrape_mode == 'UPDATE':
+            return Request( self.tender_url % ( self.tender_ids[ self.current_procurement], int( time.time() * 1000)), 
+                            priority = 20, callback = self._process_tender)
+        else:
+            return Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
+                            priority = 20, callback = self._process_tender)
 
     # mandatory, we're already logged in and can start extracting data
     def parse( self, response):
@@ -160,8 +175,13 @@ class CMRSpider( Spider):
         if self.current_procurement >= 999999:
             raise CloseSpider('Finishing at tender 999999')
         
-        yield Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
-                       priority = 20, callback = self._process_tender)
+        
+        if self.scrape_mode == 'UPDATE':
+            yield Request( self.tender_url % ( self.tender_ids[ self.current_procurement], int( time.time() * 1000)), 
+                           priority = 20, callback = self._process_tender)
+        else:
+            yield Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
+                           priority = 20, callback = self._process_tender)
                 
         '''
         these two elements are taken out to make sure they exists in case 
