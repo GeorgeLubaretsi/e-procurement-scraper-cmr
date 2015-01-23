@@ -198,10 +198,7 @@ class CMRSpider( Spider):
         # the id we use form the url, its an id we can use to refer back to the website for updated data on procurements
         iProcurement['pWebID'] = self.regex['pWebID'].findall( response.url)[0]            
 
-        # saving the processed webID so we do not visit it again with the next run of the scraper
-        infoFileDesc = open( self.scrape_info, 'wb')
-        infoFileDesc.write( iProcurement['pWebID'] + '\n')
-        infoFileDesc.close()
+
 
 
         try:
@@ -274,9 +271,16 @@ class CMRSpider( Spider):
             allCodesDetailed = self.regex['allCodesDetailed'].findall(  siteBody)[0]
             iProcurement['pCPVCodesDetailed'] = self.regex['pCPVCodesDetailed'].findall( allCodesDetailed)
             
+            # saving the processed webID so we do not visit it again with the next INCREMENTAL run of the scraper
+            # we only save a number of an existing record, so the next run we begin from this one and scrape only newly created ones
+            infoFileDesc = open( self.scrape_info, 'wb')
+            infoFileDesc.write( iProcurement['pWebID'] + '\n')
+            infoFileDesc.close()
+            
             yield iProcurement
 
             self.log( "Processed: %s" % response.url, level = log.INFO)
+            
             
 
 
