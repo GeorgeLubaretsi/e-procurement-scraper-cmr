@@ -17,7 +17,7 @@ class CMRSpider( Spider):
     allowed_domains = ['tenders.procurement.gov.ge']
     
     # logging inhttp = httplib2.Http()
-    login_url = 'https://tenders.procurement.gov.ge/login.php?lang=en'
+    login_url = 'https://tenders.procurement.gov.ge/login.php?lang='
 
     # this gives the menu on the left-hand side of the page
     #start_urls = ['https://tenders.procurement.gov.ge/engine/controller.php?action=ssp&org_id=0&_=1415169723815']
@@ -41,7 +41,7 @@ class CMRSpider( Spider):
     # note %s and %d near the end of the string, these are later replaced with actual values
     tender_url = 'https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=%d&_=%d'
         
-    def __init__(self, attachments = None, mode = 'FULL', updates = '', *args, **kwargs):
+    def __init__(self, attachments = None, mode = 'FULL', updates = '', lang = 'en', *args, **kwargs):
         super( CMRSpider, self).__init__( *args, **kwargs)
         
         self.attachments_folder = attachments
@@ -53,6 +53,8 @@ class CMRSpider( Spider):
         self.regex = {}
         self.tender_ids = []
         
+        self.lang = lang
+        self.login_url = self.login_url + self.lang
         
     def read_requested_tender_list(self):
         
