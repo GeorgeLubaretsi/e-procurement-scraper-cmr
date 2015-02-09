@@ -127,9 +127,8 @@ class CMRSpider( Spider):
     # checking whether we have succeeded logging in        
     def verify_login(self, response):
         # need to think about a more reliable check
-        if not 'Exit' in response.body:
-            raise CloseSpider( "Couldn't log in to the site")
-        if "Sign in" in response.body:
+        # this shows in both language versions of the site
+        if not 'CMR' in response.body:
             raise CloseSpider( "Couldn't log in to the site")
         
         self.identify_first_procurement_number()
