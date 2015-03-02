@@ -17,9 +17,9 @@ NEWSPIDER_MODULE = 'eProcurementScraperCMR.spiders'
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 USER_AGENT = 'Mozilla/5.0 (Windows; U; MSIE 9.0; WIndows NT 9.0; en-US))'
 
-CONCURRENT_ITEMS = 1
+CONCURRENT_ITEMS = 10
 
 SCHEDULER_DISK_QUEUE = 'scrapy.squeue.PickleFifoDiskQueue'
 SCHEDULER_MEMORY_QUEUE = 'scrapy.squeue.FifoMemoryQueue'
 
-DOWNLOAD_DELAT = 0.01
+# DOWNLOAD_DELAY = 0.01

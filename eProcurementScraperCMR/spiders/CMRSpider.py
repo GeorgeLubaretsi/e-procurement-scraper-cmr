@@ -17,7 +17,7 @@ class CMRSpider( Spider):
     allowed_domains = ['tenders.procurement.gov.ge']
     
     # logging inhttp = httplib2.Http()
-    login_url = 'https://tenders.procurement.gov.ge/login.php?lang=en'
+    login_url = 'https://tenders.procurement.gov.ge/login.php?lang='
 
     # this gives the menu on the left-hand side of the page
     #start_urls = ['https://tenders.procurement.gov.ge/engine/controller.php?action=ssp&org_id=0&_=1415169723815']
@@ -41,20 +41,30 @@ class CMRSpider( Spider):
     # note %s and %d near the end of the string, these are later replaced with actual values
     tender_url = 'https://tenders.procurement.gov.ge/engine/ssp/ssp_controller.php?action=view&ssp_id=%d&_=%d'
         
-    def __init__(self, attachments = None, mode = 'FULL', *args, **kwargs):
+    def __init__(self, attachments = None, mode = 'FULL', updates = '', lang = 'en', *args, **kwargs):
         super( CMRSpider, self).__init__( *args, **kwargs)
         
         self.attachments_folder = attachments
         self.scrape_mode = mode
         self.current_procurement = None
+        self.updates_file = updates
         
         self.scrape_info = os.getenv( 'HOME') + '/.cmrinfo'
         self.regex = {}
+        self.tender_ids = []
         
+        self.lang = lang
+        self.login_url = self.login_url + self.lang
+        
+    def read_requested_tender_list(self):
+        
+        with open( self.updates_file) as fileDesc:
+            for line in fileDesc:
+                self.tender_ids.append( int( line))
         
     def identify_first_procurement_number(self):
         
-        first_proc_number = { 'FULL' : 1, 'INCREMENTAL' : None}
+        first_proc_number = { 'FULL' : 1, 'INCREMENTAL' : None, 'UPDATE' : 0}
         
         # need to read the first number to scrape
         first_proc_number['INCREMENTAL'] = first_proc_number['FULL']
@@ -62,11 +72,14 @@ class CMRSpider( Spider):
             fileDesc = open( self.scrape_info)
             first_proc_number['INCREMENTAL'] = int( fileDesc.read()) + 1
             fileDesc.close()
-            
-        
         
         if self.current_procurement is None:
             self.current_procurement = first_proc_number[ self.scrape_mode]
+        
+        # updating requested tenders only
+        
+        if self.scrape_mode == 'UPDATE':
+            self.read_requested_tender_list()
         
         self.log( "Beginning scraping at %d\n" % self.current_procurement, level = log.INFO)
         
@@ -114,16 +127,19 @@ class CMRSpider( Spider):
     # checking whether we have succeeded logging in        
     def verify_login(self, response):
         # need to think about a more reliable check
-        if not 'Exit' in response.body:
-            raise CloseSpider( "Couldn't log in to the site")
-        if "Sign in" in response.body:
+        # this shows in both language versions of the site
+        if not 'CMR' in response.body:
             raise CloseSpider( "Couldn't log in to the site")
         
         self.identify_first_procurement_number()
 
         #return self.make_requests_from_url( self.start_urls[0])
-        return Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
-                        priority = 20, callback = self._process_tender)
+        if self.scrape_mode == 'UPDATE':
+            return Request( self.tender_url % ( self.tender_ids[ self.current_procurement], int( time.time() * 1000)), 
+                            priority = 20, callback = self._process_tender)
+        else:
+            return Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
+                            priority = 20, callback = self._process_tender)
 
     # mandatory, we're already logged in and can start extracting data
     def parse( self, response):
@@ -157,11 +173,20 @@ class CMRSpider( Spider):
     
 
         self.current_procurement += 1
-        if self.current_procurement >= 999999:
-            raise CloseSpider('Finishing at tender 999999')
+        if self.scrape_mode == 'UPGRADE':
+            if self.current_procurement >= len( self.tender_ids):
+                raise CloseSpider('Finishing Update scrape')
+        else:
+            if self.current_procurement >= 999999:
+                raise CloseSpider('Finishing at tender 999999')
         
-        yield Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
-                       priority = 20, callback = self._process_tender)
+        
+        if self.scrape_mode == 'UPDATE':
+            yield Request( self.tender_url % ( self.tender_ids[ self.current_procurement], int( time.time() * 1000)), 
+                           priority = 20, callback = self._process_tender)
+        else:
+            yield Request( self.tender_url % ( self.current_procurement, int( time.time() * 1000)), 
+                           priority = 20, callback = self._process_tender)
                 
         '''
         these two elements are taken out to make sure they exists in case 
@@ -174,10 +199,7 @@ class CMRSpider( Spider):
         # the id we use form the url, its an id we can use to refer back to the website for updated data on procurements
         iProcurement['pWebID'] = self.regex['pWebID'].findall( response.url)[0]            
 
-        # saving the processed webID so we do not visit it again with the next run of the scraper
-        infoFileDesc = open( self.scrape_info, 'wb')
-        infoFileDesc.write( iProcurement['pWebID'] + '\n')
-        infoFileDesc.close()
+
 
 
         try:
@@ -250,9 +272,16 @@ class CMRSpider( Spider):
             allCodesDetailed = self.regex['allCodesDetailed'].findall(  siteBody)[0]
             iProcurement['pCPVCodesDetailed'] = self.regex['pCPVCodesDetailed'].findall( allCodesDetailed)
             
+            # saving the processed webID so we do not visit it again with the next INCREMENTAL run of the scraper
+            # we only save a number of an existing record, so the next run we begin from this one and scrape only newly created ones
+            infoFileDesc = open( self.scrape_info, 'wb')
+            infoFileDesc.write( iProcurement['pWebID'] + '\n')
+            infoFileDesc.close()
+            
             yield iProcurement
 
             self.log( "Processed: %s" % response.url, level = log.INFO)
+            
             
 
 
