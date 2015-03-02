@@ -29,3 +29,8 @@ The file format:
 
 * Verify why after session time-out the scraper has problems logging back in.
 * Implement re-scrape for a list of indicated procurements for which the data should be refreshed
+
+
+### License
+
+E-procurement CMR scraper is released under the terms of [GNU General Public License (V2)](http://www.gnu.org/licenses/gpl-2.0.html).
