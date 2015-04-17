@@ -168,7 +168,7 @@ class CMRSpider( Spider):
             # we will need to revisit this page
             self.log( "Session Timed Out - refreshing", level = log.INFO)
             yield self.login_request()
-            yield Request( response.request.url, dont_filter = True, priority = 20)
+            yield Request( response.request.url, dont_filter = True, priority = 20, callback = self._process_tender)
             return
     
 
