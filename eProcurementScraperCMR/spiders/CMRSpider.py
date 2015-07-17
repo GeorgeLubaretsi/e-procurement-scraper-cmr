@@ -339,7 +339,7 @@ class CMRSpider( Spider):
         self.regex['paidAmounts'] =  re.compile( ur'actually\s+paid\s+amount.*?\>(\d{2}\.\d{2}\.\d{4})\<.*?(\d+\.*\d+\s*\w+)\<', re.UNICODE)
         
         # Financing source
-        self.regex['pFinancingSource'] = re.compile( ur'Financing\s+source.*?\<td\>(.*?)\s*\<br\>.*?\<strong\>(.*?)\<', re.UNICODE)
+        self.regex['pFinancingSource'] = re.compile( ur'Financing.*?\<td\>(.*?)\s*\<br\>.*?\<strong\>(.*?)\<', re.UNICODE)
         
         # Procurement Base
         self.regex['pProcurementBase'] = re.compile( ur'Procurement\s+Base.*?\<td\>[&quot;]?(.*?)[&quot;]?\s*\<', re.UNICODE)
