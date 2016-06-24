@@ -176,8 +176,8 @@ class CMRSpider(BaseSpider):
             if self.current_procurement >= len(self.tender_ids):
                 raise CloseSpider('Finishing Update scrape')
         else:
-            if self.current_procurement >= 999999:
-                raise CloseSpider('Finishing at tender 999999')
+            if self.current_procurement >= 1500000:
+                raise CloseSpider('Finishing at tender 1500000')
 
         if self.scrape_mode == 'UPDATE':
             yield Request(self.tender_url % (self.tender_ids[self.current_procurement], int(time.time() * 1000)),
